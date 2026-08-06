@@ -120,8 +120,8 @@
 		}
 	],
 	"compatibility": {
-		"minimum": "12",
-		"verified": "12.343"
+		"minimum": "13",
+		"verified": "13"
 	},
 	"relationships": {
 		"requires": [
