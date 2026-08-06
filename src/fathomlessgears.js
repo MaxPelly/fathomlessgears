@@ -57,11 +57,11 @@ Hooks.once("init", async function () {
 		condition: HLMConditionModel,
 		internal_pc: HLMInternalPCModel,
 		internal_npc: HLMInternalNPCModel,
-		frame: HLMFrameModel,
+		frame_pc: HLMFrameModel,
 		size: HLMSizeModel,
 		grid: HLMGridModel,
-		template: HLMFishTemplateModel,
-		history: HLMHistoryModel
+		fish_template: HLMFishTemplateModel,
+		history_event: HLMHistoryModel
 	};
 	CONFIG.Token.documentClass = HLMTokenDocument;
 	CONFIG.Token.objectClass = HLMToken;
@@ -190,7 +190,7 @@ export const system_ready = new Promise((success) => {
 		}
 
 		CONFIG.statusEffects = foundry.utils.duplicate(conditions);
-		game.availableConditionItems = discoverConditions();
+		game.availableConditionItems = await discoverConditions();
 		addRollableTables();
 		Hooks.callAll("conditionListReady");
 
