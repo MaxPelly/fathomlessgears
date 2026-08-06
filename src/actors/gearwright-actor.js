@@ -136,7 +136,7 @@ async function applySize(importData, actor) {
 	try {
 		size = await Utils.findCompendiumItemFromName("size", importData.size);
 	} catch (_e) {
-		if (mportData.size == "siltstalker leviathan") {
+		if (importData.size == "siltstalker leviathan") {
 			size = await Utils.findCompendiumItemFromName(
 				"size",
 				"siltstalker"
