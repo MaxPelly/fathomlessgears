@@ -80,14 +80,15 @@ export function compatibleGearwrightVersion(data) {
 }
 
 function isCompatibleVersion(versionString) {
-	versionString.split(".").forEach((string, index) => {
-		let val = parseInt(string);
+	const parts = versionString.split(".");
+	for (let index = 0; index < parts.length; index++) {
+		const val = parseInt(parts[index]);
 		if (
 			val < COMPATIBLE_GEARWRIGHT_MIN[index] ||
 			val > COMPATIBLE_GEARWRIGHT_MAX[index]
 		) {
 			return false;
 		}
-	});
+	}
 	return true;
 }
