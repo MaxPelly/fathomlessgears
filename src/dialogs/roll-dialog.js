@@ -188,7 +188,14 @@ export class RollDialog extends HLMApplication {
 			...this.flatBonuses
 		].filter((element) => Boolean(element.active));
 		if (this.focused) {
-			modifierStack.push(this.focused);
+			modifierStack.push(
+				new RollElement(
+					1,
+					ROLL_MODIFIER_TYPE.flat,
+					game.i18n.localize("CONDITIONS.focused"),
+					ROLL_MODIFIER_TYPE.modifier
+				)
+			);
 			this.actor.removeFocused();
 		}
 		const rollParams = new RollParameters(
