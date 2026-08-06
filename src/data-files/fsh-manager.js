@@ -471,16 +471,13 @@ async function writeNewCompendiumItems(
 		`${game.i18n.localize("MANAGER.loading")} ${compendium.metadata.label}`
 	);
 	for (let itemName of Object.keys(relevantData)) {
-		const item = await createItem(
+		await createItem(
 			itemName,
 			relevantData[itemName],
 			itemType,
 			fileId,
 			compendium
 		);
-		if (item) {
-			await compendium.importDocument(item);
-		}
 	}
 }
 
