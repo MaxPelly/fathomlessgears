@@ -236,15 +236,16 @@ export async function quickCreateCounter(activeEffect, value) {
 }
 
 /**
- * Searches through all COmpendia attached to this world for all condition items
- * @returns a Set of Condition items
+ * Searches through all Compendia attached to this world for all condition items
+ * @returns a Promise that resolves to a Map of Condition items keyed by effectName
  */
-export function discoverConditions() {
+export async function discoverConditions() {
 	const foundConditions = new Map();
 	const itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
 
-	itemPacks.forEach((pack) => {
-		pack.getDocuments().then((allItems) => {
+	await Promise.all(
+		itemPacks.map(async (pack) => {
+			const allItems = await pack.getDocuments();
 			allItems
 				.filter((item) => item.type == ITEM_TYPES.condition)
 				.forEach((condition) => {
@@ -254,8 +255,8 @@ export function discoverConditions() {
 							condition
 						);
 				});
-		});
-	});
+		})
+	);
 
 	return foundConditions;
 }
