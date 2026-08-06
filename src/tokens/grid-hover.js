@@ -83,6 +83,7 @@ export class GridHoverHUD extends HLMApplication {
 	 * @param {HTML} html The HTML document
 	 */
 	activateListeners(html) {
+		html = $(html);
 		this.object.grid.activateListeners(html);
 	}
 
@@ -244,6 +245,7 @@ function refreshGrid(actor) {
 }
 
 export function addGridHudToSidebar(_app, html) {
+	html = $(html);
 	const compendium = html[0].classList?.contains("actors-sidebar")
 		? html[0]
 		: html.siblings().filter(`.actors-sidebar`)[0];

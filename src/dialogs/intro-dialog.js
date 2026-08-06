@@ -20,6 +20,7 @@ export class IntroDialog extends HLMApplication {
 
 	activateListeners(html) {
 		super.activateListeners(html);
+		html = $(html);
 		Utils.activateButtons(html);
 		html.find("#skip").click(this.skip.bind(this));
 		html.find("#manager").click(this.openManager.bind(this));

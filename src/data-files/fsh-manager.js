@@ -17,6 +17,7 @@ import {createHLMItemData} from "../items/item.js";
  * @param {*} html
  */
 export function addFshManager(_app, html) {
+	html = $(html);
 	const compendium = html[0].classList?.contains("compendium-sidebar")
 		? html
 		: html.siblings().filter(`.compendium-sidebar`);
@@ -129,6 +130,7 @@ export class FshManager extends HLMApplication {
 
 	activateListeners(html) {
 		super.activateListeners(html);
+		html = $(html);
 		Utils.activateButtons(html);
 
 		document

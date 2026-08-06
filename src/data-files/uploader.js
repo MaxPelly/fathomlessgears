@@ -34,6 +34,7 @@ export class FileUploader extends Application {
 
 	activateListeners(html) {
 		super.activateListeners(html);
+		html = $(html);
 		Utils.activateButtons(html);
 		let fileInput = document.getElementById("fsh-file-select");
 		if (fileInput) {

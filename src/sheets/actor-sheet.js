@@ -167,6 +167,7 @@ export class HLMActorSheet extends ActorSheet {
 
 	/** @inheritdoc */
 	activateListeners(html) {
+		html = $(html);
 		//Add classes to attribute boxes with special properties
 		Object.keys(this.actor.system.attributes).forEach((key) => {
 			if (Utils.isRollableAttribute(key)) {

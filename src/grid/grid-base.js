@@ -85,6 +85,7 @@ export class Grid {
 	 * @returns the HTML with listeners(?)
 	 */
 	activateListeners(html) {
+		html = $(html);
 		html.find(".grid-space").click(this.clickGridSpace.bind(this));
 		html.find(".grid-space").mouseenter(this._onMouseEnterSpace.bind(this));
 		html.find(".grid-space").mouseleave(this._onMouseLeaveSpace.bind(this));

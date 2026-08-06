@@ -82,6 +82,7 @@ export class NarrativeRollDialog extends HLMApplication {
 
 	activateListeners(html) {
 		super.activateListeners(html);
+		html = $(html);
 		Utils.activateButtons(html);
 		html.find(".btn").click(this.triggerRoll.bind(this));
 		html.find('[data-selector="additional"]').change(async (_evt) => {

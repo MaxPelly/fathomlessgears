@@ -85,6 +85,7 @@ Hooks.once("init", async function () {
 		decimals: 1
 	};
 	Hooks.on("renderSidebarTab", async (app, html) => {
+		html = $(html);
 		addFshManager(app, html);
 		addGridHudToSidebar(app, html);
 	});

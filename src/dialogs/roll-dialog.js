@@ -122,6 +122,7 @@ export class RollDialog extends HLMApplication {
 
 	activateListeners(html) {
 		super.activateListeners(html);
+		html = $(html);
 		Utils.activateButtons(html);
 		html.find(".btn").click(this.triggerRoll.bind(this));
 		html.find('[data-selector="additionalFlat"]').change(async (_evt) => {

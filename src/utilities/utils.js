@@ -216,7 +216,7 @@ export class Utils {
 	}
 
 	static activateButtons(html) {
-		html.find(".btn").each(function () {
+		$(html).find(".btn").each(function () {
 			this.classList.add("btn-active");
 		});
 	}
