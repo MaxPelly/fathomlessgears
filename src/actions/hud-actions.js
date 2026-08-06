@@ -46,19 +46,19 @@ export class HUDActionCollection {
 		game.tagHandler.createChatMessage(message, false);
 	}
 
-	createBallastTokens() {
+	async createBallastTokens() {
 		const tokens = canvas.tokens.controlled;
 
-		const newDocuments = [];
-		tokens.forEach(async (token) => {
-			const newDocument = await token.actor.getTokenDocument({
-				x: token.document.x + canvas.grid.size * 8,
-				y: token.document.y,
-				name: token.document.name,
-				flags: {fathomlessgears: {originalActor: token.actor.uuid}}
-			});
-			newDocuments.push(newDocument);
-		});
+		const newDocuments = await Promise.all(
+			tokens.map(async (token) => {
+				return await token.actor.getTokenDocument({
+					x: token.document.x + canvas.grid.size * 8,
+					y: token.document.y,
+					name: token.document.name,
+					flags: {fathomlessgears: {originalActor: token.actor.uuid}}
+				});
+			})
+		);
 
 		canvas.scene
 			.createEmbeddedDocuments("Token", newDocuments)
