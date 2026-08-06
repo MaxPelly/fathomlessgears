@@ -13,7 +13,10 @@ export class MessageHandler {
 
 	constructor() {
 		this.loadItemTypes();
-		this.loadTags();
+		this.tagItems = [];
+		// loadTags is async; kick it off immediately and store the Promise
+		// so the tag list is populated as soon as all compendium queries settle.
+		this.tagsReady = this.loadTags();
 		this.addListeners();
 		this.addConditionItemListener();
 		Hooks.on("renderChatMessage", () => {
@@ -100,19 +103,20 @@ export class MessageHandler {
 	/**
 	 * Gather the items that are referenced during formatting
 	 */
-	loadTags() {
+	async loadTags() {
 		let itemPacks = game.packs.filter((p) => p.metadata.type === "Item");
 		this.tagItems = [];
 
-		itemPacks.forEach((pack) => {
-			pack.getDocuments().then((allItems) => {
+		await Promise.all(
+			itemPacks.map(async (pack) => {
+				const allItems = await pack.getDocuments();
 				this.tagItems.push(
 					...allItems.filter((item) =>
 						this.tagItemTypes.includes(item.type)
 					)
 				);
-			});
-		});
+			})
+		);
 	}
 
 	formatText(text, context) {
