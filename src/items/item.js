@@ -286,10 +286,13 @@ export class HLMItem extends Item {
 	}
 
 	getTags() {
-		if (!this.system.tags) return false;
+		if (!this.system.tags) return [];
 		const tags = game.tagHandler.getTags().filter((tag) => {
-			this.system.tags.includes((itemTag) => {
-				return Utils.toLowerHyphen(itemTag.name) === tag.name;
+			return this.system.tags.some((itemTag) => {
+				return (
+					Utils.toLowerHyphen(itemTag.name) ===
+					Utils.toLowerHyphen(tag.name)
+				);
 			});
 		});
 		return tags;
