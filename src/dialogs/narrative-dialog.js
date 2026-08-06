@@ -66,7 +66,7 @@ export class NarrativeRollDialog extends HLMApplication {
 	async getData(options) {
 		const context = await super.getData(options);
 		context.modifiers = this.modifiers;
-		context.additional = this.additional;
+		context.additional = this.additionalLabels;
 		context.totalString = this.calculateDieTotal().toString() + "d6";
 		context.checkDifficulties = [];
 		Object.keys(NARRATIVE_DIFFICULTY).forEach((difficulty) => {
@@ -86,7 +86,7 @@ export class NarrativeRollDialog extends HLMApplication {
 		Utils.activateButtons(html);
 		html.find(".btn").click(this.triggerRoll.bind(this));
 		html.find('[data-selector="additional"]').change(async (_evt) => {
-			this.additional = _evt.target.value;
+			this.additionalLabels = _evt.target.value;
 			this.updateTotalString();
 		});
 		html.find(".element-checkbox").change(async (_evt) => {
@@ -133,12 +133,13 @@ export class NarrativeRollDialog extends HLMApplication {
 		);
 
 		if (parseInt(this.additionalLabels)) {
-			rollParams.modifierStack.push(
-				new LabelRollElement(
-					parseInt(this.additionalLabels),
-					game.i18n.localize("ROLLDIALOG.other")
-				)
-			);
+			for (let i = 0; i < parseInt(this.additionalLabels); i++) {
+				rollParams.modifierStack.push(
+					new LabelRollElement(
+						game.i18n.localize("ROLLDIALOG.other")
+					)
+				);
+			}
 		}
 
 		await game.rollHandler.rollNarrative(rollParams, null, 0);
