@@ -222,9 +222,9 @@ export class HLMActorSheet extends ActorSheet {
 		}
 		if (this.actor.type === ACTOR_TYPES.fisher) {
 			html.find(".meltdown-button").click(this.rollMeltdown.bind(this));
-			document
-				.getElementById("post-frame-ability")
-				.addEventListener("click", this.postFrameAbility.bind(this));
+			html.find("#post-frame-ability").click(
+				this.postFrameAbility.bind(this)
+			);
 			html.find(".history-table-row").on(
 				"dragover",
 				this.dragOverHistoryTable.bind(this)
