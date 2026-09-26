@@ -8,7 +8,7 @@ export class FileUploader extends foundry.applications.api.HandlebarsApplication
 	newFile;
 
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears"],
+		classes: ["fathomlessgears", "themed", "theme-light"],
 		window: {title: "File Upload"},
 		position: {width: 400, height: 115},
 		actions: {

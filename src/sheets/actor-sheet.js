@@ -11,7 +11,7 @@ export class HLMActorSheet extends foundry.applications.api.HandlebarsApplicatio
 	foundry.applications.sheets.ActorSheetV2
 ) {
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears", "sheet", "actor"],
+		classes: ["fathomlessgears", "sheet", "actor", "themed", "theme-light"],
 		position: {width: 750, height: 650},
 		form: {submitOnChange: true},
 		dragDrop: [{dragSelector: ".item-list .item", dropSelector: null}],

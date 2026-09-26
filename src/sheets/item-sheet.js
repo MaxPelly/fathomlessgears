@@ -5,7 +5,7 @@ export class HLMItemSheet extends foundry.applications.api.HandlebarsApplication
 	foundry.applications.sheets.ItemSheetV2
 ) {
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears", "sheet", "item"],
+		classes: ["fathomlessgears", "sheet", "item", "themed", "theme-light"],
 		tag: "form",
 		position: {width: 400, height: 200},
 		form: {submitOnChange: true},

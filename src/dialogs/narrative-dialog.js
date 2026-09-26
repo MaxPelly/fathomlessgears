@@ -37,7 +37,7 @@ function getFullSuccessThreshold(difficulty) {
 
 export class NarrativeRollDialog extends HLMApplication {
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears"],
+		classes: ["fathomlessgears", "themed", "theme-light"],
 		window: {title: "Roll Inputs"},
 		position: {width: 500},
 		actions: {

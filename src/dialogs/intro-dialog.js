@@ -4,7 +4,7 @@ import {FshManager} from "../data-files/fsh-manager.js";
 
 export class IntroDialog extends HLMApplication {
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears"],
+		classes: ["fathomlessgears", "themed", "theme-light"],
 		window: {title: "INTRO.title"},
 		position: {width: 300},
 		actions: {

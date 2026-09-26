@@ -915,3 +915,81 @@ chunk in the whole migration to skip live-testing):**
   (`waiting` class toggling via `actor.sheet?.element`).
 - Existing world actors (fisher and fish) open correctly with data intact after this
   conversion, per §12's final test-matrix item.
+
+## Chunk 5 continued: rest of §8 CSS
+
+**Real regression found and fixed, caused by this chunk's own earlier work:** removing the
+templates' `<form class="... fish">`/`<form class="... fisher">` wrapper (needed because
+AppV2 supplies the form via `tag: "form"` at the *outer* app frame) also deleted the only
+element carrying the `fish`/`fisher` class - and `sheet.css`'s entire per-type colour theme
+(`.fathomlessgears.sheet { & .fish {...} & .fisher {...} }`, ~24 custom-property
+overrides) is scoped as a *descendant* selector expecting that class on an *inner* element,
+not the outer frame. Restored it by wrapping each template's content in a plain
+`<div class="fish">`/`<div class="fisher">` (a div, not a new `<form>`, since the outer
+frame already provides the real form). Also fixed the same class of bug in
+`utils.css`: `.fathomlessgears form {height:100%}` no longer matched anything (the outer
+frame is now *simultaneously* `.fathomlessgears` and a `<form>` on the same element, not a
+descendant relationship), rewritten as `.fathomlessgears.sheet {height:100%}` - scoped to
+sheets specifically, not dialogs, since only the actor/item sheets carry the `"sheet"`
+class.
+
+**Design question resolved with the maintainer, not guessed:** `theme.css` redefines
+roughly 50 of Foundry core's own CSS custom property names (`--color-*` plus
+`--sidebar-*`/`--hotbar-*`/`--z-index-*`, unscoped at `:root`) with this system's own
+palette and sizes - not confined to this system's own sheets, but affecting the whole
+Foundry client (sidebar, hotbar, chat, any other module's dialogs). The plan's §8 item
+assumed this was an accidental name collision and said to rename everything to
+system-scoped names (`--fg-*`) so v13/v14's own theming isn't disturbed - but doing that
+as written would have reverted the *entire client's* look to core's default everywhere
+outside this system's own sheets, which only makes sense if the original global override
+was accidental. Asked the maintainer directly rather than guessing at intent: confirmed
+this is a deliberate whole-client reskin, kept as-is, no renaming performed.
+
+**Real, unresolved v13/v14 compatibility risk surfaced by the above, flagged not fixed:**
+v13+ auto-wraps every system stylesheet in `@layer system` (already noted as a general
+risk in chunk 1's dev log entry). If core's *own* `:root`/`.theme-light`/`.theme-dark`
+variable definitions for these same `--color-*` names live in an unlayered or
+higher-priority layer than `@layer system`, this reskin's global `:root` override could
+silently lose the cascade and stop working entirely under v13/v14, regardless of the
+"keep it" decision above - this is a structural question about how the *mechanism* the
+reskin depends on interacts with a real v13/v14 change, not a scope/intent question, and
+TypeDoc (a JS API reference) has no way to answer it. Could not resolve this without
+either Foundry's actual core CSS source or a live client to inspect computed styles -
+flagged here as the **highest-priority visual check** for this chunk's §12 testing:
+confirm the system's custom colours (not core's v13/v14 defaults) are what actually renders.
+- Added `"themed", "theme-light"` to every sheet/dialog's `classes` (actor sheet, item
+  sheet, all four dialogs, FshManager, FileUploader - not `GridHoverHUD`, which is a
+  frameless HUD overlay the concept doesn't apply to), per the plan's explicit
+  recommendation. This forces a consistent light-mode baseline for anything this system's
+  *own* CSS doesn't explicitly style (native form control chrome, etc.) regardless of the
+  user's OS/core dark-mode preference - complementary to, not a replacement for, the kept
+  whole-client reskin above. Exact class names (`themed`/`theme-light`) aren't
+  TypeDoc-verifiable (a CSS/DOM convention, not a JS API) - matches the plan's own stated
+  knowledge, flagged for a live visual check.
+- **Font Awesome:** `narrative-dice-partial.html`'s `fa-unlock-alt` (an FA5 alias) ->
+  `fa-lock-open` (stable across FA5/6/7), exactly as the plan named. Checked
+  `grid-space.html` (no icons at all) and `history-table.html`/`history-list-item.html`
+  (chevron/trash/pen/xmark - all stable, non-aliased names, nothing to rename). Can't
+  verify rendered glyph *width* differences between FA6 (this system's configured
+  `--font-awesome` family) and FA7 (bundled with v14) without a live client - flagged, not
+  fixable from source alone.
+- **FSH manager sidebar button:** fixed a real, concrete bug found while looking at this -
+  the button's icon `<i>` element had a sizing class (`i--s`) but no actual icon glyph
+  class at all, so no icon has ever rendered, just the "FSH Manager" text. Added
+  `fa-solid fa-file-import`. Added a small `.fsh-content-manager-button` CSS rule
+  (flex layout, centered icon+label) preserving the existing `flex-basis:100%` full-width
+  row placement. Exact pixel-parity with v13/v14's real header-action button padding/
+  colours needs a live client - this is a bounded, low-risk cosmetic improvement, not a
+  verified visual match.
+- Verified every CSS file (touched or not) still parses with a nesting-aware parser
+  (`postcss` + `postcss-nested`, installed temporarily and removed again) - the project's
+  existing CSS uses modern nesting syntax that older/simpler CSS parsers (e.g. the plain
+  `css` npm package) can't parse at all, which is worth remembering for any future CSS
+  verification in this repo: reach for a nesting-aware parser, not a bare brace-count or a
+  legacy CSS-parsing package.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, full `src/`
+`.mjs`-copy syntax sweep clean, all touched templates precompiled without error, all CSS
+(touched and untouched) parses cleanly with `postcss`+`postcss-nested`.
+
+This closes out chunk 5 (plan §11 item 5: §7 steps 7-8 + §8) in full.

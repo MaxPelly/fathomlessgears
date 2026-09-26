@@ -4,7 +4,7 @@ import {HLMApplication} from "../sheets/application.js";
 
 export class ReserveApDialog extends HLMApplication {
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears"],
+		classes: ["fathomlessgears", "themed", "theme-light"],
 		window: {title: "RESERVEDIALOG.name"},
 		position: {width: 200},
 		actions: {

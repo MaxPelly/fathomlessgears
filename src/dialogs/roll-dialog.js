@@ -72,7 +72,7 @@ export class RollDialog extends HLMApplication {
 	cover;
 
 	static DEFAULT_OPTIONS = {
-		classes: ["fathomlessgears"],
+		classes: ["fathomlessgears", "themed", "theme-light"],
 		window: {title: "Roll Inputs"},
 		position: {width: 300},
 		actions: {
