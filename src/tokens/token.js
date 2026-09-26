@@ -1,4 +1,5 @@
 import {BALLAST_TOKEN_CONDITIONS} from "../conditions/conditions.js";
+import {getTokenEffectsToDraw} from "../utilities/compat.js";
 
 /**
  * Extend the base TokenDocument to support resource type attributes.
@@ -21,44 +22,37 @@ export class HLMToken extends foundry.canvas.placeables.Token {
 		game.hoveredToken = null;
 	}
 	/**
-	 * A copy of a core function with a small modification to filter non-aplicable effects
+	 * Draw the actor's effect icons, filtered to only those applicable to this token (see
+	 * `filterEffectList`), by temporarily substituting the actor's effect list core reads
+	 * from and delegating everything else to core's own `_drawEffects` implementation.
+	 * This avoids re-implementing core's drawing logic (which differs between v13 and
+	 * v14 - see `getTokenEffectsToDraw`), while still applying the system's own filtering.
 	 * @override
 	 */
 	async _drawEffects() {
-		this.effects.renderable = false;
+		const actor = this.actor;
+		if (!actor) return super._drawEffects();
 
-		// Clear Effects Container
-		this.effects.removeChildren().forEach((c) => c.destroy());
-		this.effects.bg = this.effects.addChild(new PIXI.Graphics());
-		this.effects.bg.zIndex = -1;
-		this.effects.overlay = null;
+		const effects = this.filterEffectList(getTokenEffectsToDraw(this));
+		const propertyName = CONST.ACTIVE_EFFECT_SHOW_ICON
+			? "appliedEffects"
+			: "temporaryEffects";
+		const descriptor = Object.getOwnPropertyDescriptor(actor, propertyName);
 
-		// Categorize new effects
-		let activeEffects = this.actor?.temporaryEffects || [];
-		activeEffects = this.filterEffectList(activeEffects);
-		const overlayEffect = activeEffects.findLast(
-			(e) => e.img && e.getFlag("core", "overlay")
-		);
+		Object.defineProperty(actor, propertyName, {
+			configurable: true,
+			get: () => effects
+		});
 
-		// Draw effects
-		const promises = [];
-		for (const [i, effect] of activeEffects.entries()) {
-			if (!effect.img) continue;
-			const promise =
-				effect === overlayEffect
-					? this._drawOverlay(effect.img, effect.tint)
-					: this._drawEffect(effect.img, effect.tint);
-			promises.push(
-				promise.then((e) => {
-					if (e) e.zIndex = i;
-				})
-			);
+		try {
+			await super._drawEffects();
+		} finally {
+			if (descriptor) {
+				Object.defineProperty(actor, propertyName, descriptor);
+			} else {
+				delete actor[propertyName];
+			}
 		}
-		await Promise.allSettled(promises);
-
-		this.effects.sortChildren();
-		this.effects.renderable = true;
-		this.renderFlags.set({refreshEffects: true});
 	}
 
 	filterEffectList(actorEffects) {

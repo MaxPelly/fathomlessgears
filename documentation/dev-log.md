@@ -360,3 +360,84 @@ syntax-checkable via `.mjs` copies and manual review). Ran `npm install` (157 pa
 No further code changes needed beyond the `roll-table.js` fix above - chunk 1 remains
 otherwise verified correct. `npm run lint`/`npm install` are no longer blocked in this
 environment and should be part of routine verification for every future chunk.
+
+## Chunk 2: §5 active effects/token rendering + §6 movement ruler
+
+Verified every version-sensitive API claim in these two sections against the real v14.365
+docs (`https://foundryvtt.com/api/`) before writing code, per the migration reference doc's
+own rule of thumb. Notably, `TokenRulerWaypoint` and its `measurement.cost` field aren't
+linked from the docs' own class/module indexes (same gap already seen with
+`CompendiumDirectory` in chunk 1) - found via the `TokenRuler` class page's own hyperlinks
+into `types/foundry.types.TokenRulerWaypoint.html` rather than the site nav. Confirmed:
+`Actor#appliedEffects` and `Actor#temporaryEffects` both exist on v14; `ActiveEffect#showIcon`
+is a real schema field; `CONST.ACTIVE_EFFECT_SHOW_ICON` is `{NEVER:0, CONDITIONAL:1, ALWAYS:2}`
+(default CONDITIONAL); `CONFIG.Token.rulerClass: typeof TokenRuler` exists;
+`TokenRuler#_getGridHighlightStyle(waypoint, offset)` / `_getSegmentStyle(waypoint)` have
+exactly the plan's assumed signatures; `waypoint.measurement.cost` is a real field on
+`GridMeasurePathResultWaypoint`. TypeDoc only documents signatures, not method bodies, so
+the *exact* internal logic of core's real `_drawEffects()` (e.g. whether the
+`CONDITIONAL` branch's "does it get an icon anyway" check is exactly `isTemporary ||
+statuses.size` as the plan asserts) couldn't be confirmed this way - implemented per the
+plan's text, flagged below and already tracked as a required §12 live-client test.
+
+**§5 active effects:**
+- `active-effect.js`: `_onCreate`/`_onUpdate`/`_onDelete` now call `super` first, then
+  `this.parent?.transferEffects?.()` (was unguarded `this.parent.transferEffects()` called
+  *before* `super`) - guards the v14 case where an effect's parent can be a world/compendium
+  document with no actor, and stops calling `super` after the side effect for no reason.
+  Also gated the transfer on `args.at(-1) === game.user.id` (userId is always the last
+  argument across all three lifecycle methods, despite their different arities) so a
+  multi-client session doesn't have every connected client redundantly recompute the same
+  actor's effect transfer.
+- `token.js` `_drawEffects`: replaced the hand-copied-from-v12-core reimplementation with
+  a thin wrapper that computes the system's filtered effect list once
+  (`filterEffectList(getTokenEffectsToDraw(this))`), temporarily shadows the actor's
+  `appliedEffects`/`temporaryEffects` getter (whichever the running version's core actually
+  reads, feature-detected on `CONST.ACTIVE_EFFECT_SHOW_ICON`) with that pre-filtered list,
+  and delegates to the real `super._drawEffects()` - this is the plan's explicitly
+  "preferred" option over re-copying core's drawing body. `getTokenEffectsToDraw` (new,
+  in `compat.js`) returns `actor.temporaryEffects` on v13 and, on v14,
+  `actor.appliedEffects` filtered to `showIcon === ALWAYS`, or `showIcon === CONDITIONAL`
+  effects that are temporary or carry a status - matching plan §5's stated safety net for
+  duration-less `toggleStatusEffect` conditions.
+  - **Caveat worth testing for, not fixed here:** this shadows an own-property on
+    `this.actor`, which for a *linked* token is the same shared Actor instance across every
+    placeable representing it. Foundry draws all placeables on a layer concurrently
+    (`Promise.all`), so if two linked tokens of the same actor are redrawn in the same
+    batch, there's a narrow window where one token's shadowed getter could theoretically be
+    read while computing the other's effect list, temporarily showing the wrong filtered
+    set (e.g. a ballast token flashing non-ballast icons) until the next redraw
+    self-corrects it. This risk is inherent to the plan's own preferred design, not
+    something avoidable without reimplementing core's `_drawEffects` body (the alternative
+    the plan explicitly wanted to avoid) - flagged for the maintainer to watch for with
+    duplicate linked tokens of the same actor during §12 testing, not blocking merge.
+
+**§6 movement ruler:**
+- Deleted `configureElevationRuler` and its `ready`-hook call entirely, along with the
+  `game.modules.get("elevationruler").active` guard that would throw when the module isn't
+  installed (this was also §10's first bullet - resolved as a side effect, as the plan
+  itself predicted).
+- Added `src/tokens/token-ruler.js`: `HLMTokenRuler extends
+  foundry.canvas.placeables.tokens.TokenRuler`, overriding `_getGridHighlightStyle` and
+  `_getSegmentStyle` to recolour (only the `color` field, preserving every other property
+  `super()` returns) by comparing `waypoint.measurement.cost` against
+  `actor.system.attributes.speed.total`: at/under 1x speed is blue (`#1a4e9d`), up to 2x is
+  green (`#0e880e`), beyond is red (`#8c1818`) - same three thresholds and colours as the
+  deleted Elevation Ruler configuration, now expressed through the real v14 ruler API
+  instead of a third-party module integration.
+- Registered `CONFIG.Token.rulerClass = HLMTokenRuler` in the `init` hook, alongside the
+  other `CONFIG.Token.*` assignments.
+- Bundled in the same commit: moved `CONFIG.statusEffects = foundry.utils.duplicate(conditions)`
+  from the `ready` hook to `init` (plan §5's "consider" item) - safe because `conditions` is
+  a plain imported array with no dependency on world data being loaded, unlike
+  `discoverConditions()` (which needs `game.packs`, populated only from `setup` onward) and
+  was deliberately left in `ready`.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean on all touched files,
+full `src/` `.mjs`-copy syntax sweep clean, grepped for any leftover `elevationruler`/
+`Color.from`/`configureElevationRuler` references (none). No `CONFIG.ActiveEffect.legacyTransferral`
+change needed (plan confirms nothing to do there).
+
+Still needs, per §12: confirm on both versions that status effects created via
+`toggleStatusEffect` (no duration) still show token icons, and specifically watch for the
+duplicate-linked-token race noted above.

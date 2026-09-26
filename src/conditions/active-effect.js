@@ -2,18 +2,32 @@ import {NUMBERED_CONDITIONS} from "./conditions.js";
 
 export class HLMActiveEffect extends ActiveEffect {
 	_onCreate(...args) {
-		this.parent.transferEffects();
 		super._onCreate(...args);
+		this._transferEffectsIfOriginatingClient(args);
 	}
 
 	_onDelete(...args) {
-		this.parent.transferEffects();
 		super._onDelete(...args);
+		this._transferEffectsIfOriginatingClient(args);
 	}
 
 	_onUpdate(...args) {
-		this.parent.transferEffects();
 		super._onUpdate(...args);
+		this._transferEffectsIfOriginatingClient(args);
+	}
+
+	/**
+	 * `transferEffects` re-derives the actor's effect list from its items, which every
+	 * connected client's own copy of the actor needs done exactly once - not once per
+	 * client. `userId` is always the last argument across `_onCreate`/`_onUpdate`/
+	 * `_onDelete`, regardless of their differing arities. `this.parent` can be null on
+	 * v14 (effects can be world/compendium documents with no actor parent).
+	 * @param {Array} args The lifecycle hook's original arguments
+	 */
+	_transferEffectsIfOriginatingClient(args) {
+		if (args.at(-1) === game.user.id) {
+			this.parent?.transferEffects?.();
+		}
 	}
 
 	hasCounterFlag() {

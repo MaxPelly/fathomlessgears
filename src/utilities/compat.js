@@ -44,3 +44,34 @@ export function renderTemplate(...args) {
 export function loadTemplates(...args) {
 	return foundry.applications.handlebars.loadTemplates(...args);
 }
+
+/**
+ * Returns the list of ActiveEffects on a token's actor that core would draw an icon for,
+ * before any system-specific filtering (see `HLMToken.filterEffectList`).
+ *
+ * v13 has no `ActiveEffect#showIcon` field, so core token rendering just uses every
+ * temporary-duration effect (`Actor#temporaryEffects`). v14 adds `showIcon` (see
+ * `CONST.ACTIVE_EFFECT_SHOW_ICON`) and core filters `Actor#appliedEffects` by it instead -
+ * `ALWAYS` always shows, `NEVER` never shows, and `CONDITIONAL` (the default) shows only
+ * for effects that are temporary or carry at least one status. We feature-detect on the
+ * CONST existing (per plan §0.3) rather than branching on version number.
+ * @param {foundry.canvas.placeables.Token} token The token whose actor's effects to list
+ * @returns {foundry.documents.ActiveEffect[]} The effects core would consider drawing
+ */
+export function getTokenEffectsToDraw(token) {
+	const actor = token.actor;
+	if (!actor) return [];
+
+	const showIcon = CONST.ACTIVE_EFFECT_SHOW_ICON;
+	if (!showIcon) {
+		return actor.temporaryEffects;
+	}
+
+	return actor.appliedEffects.filter((effect) => {
+		if (effect.showIcon === showIcon.ALWAYS) return true;
+		if (effect.showIcon === showIcon.CONDITIONAL) {
+			return effect.isTemporary || effect.statuses.size > 0;
+		}
+		return false;
+	});
+}

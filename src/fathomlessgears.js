@@ -4,6 +4,7 @@ import {HLMItem} from "./items/item.js";
 import {HLMActorSheet} from "./sheets/actor-sheet.js";
 import {HLMActiveEffect} from "./conditions/active-effect.js";
 import {HLMToken, HLMTokenDocument, TokenDropHandler} from "./tokens/token.js";
+import {HLMTokenRuler} from "./tokens/token-ruler.js";
 import {preloadHandlebarsTemplates} from "./utilities/templates.js";
 import {initialiseHelpers} from "./utilities/handlebars.js";
 import {addFshManager} from "./data-files/fsh-manager.js";
@@ -65,7 +66,9 @@ Hooks.once("init", async function () {
 	};
 	CONFIG.Token.documentClass = HLMTokenDocument;
 	CONFIG.Token.objectClass = HLMToken;
+	CONFIG.Token.rulerClass = HLMTokenRuler;
 	CONFIG.ActiveEffect.documentClass = HLMActiveEffect;
+	CONFIG.statusEffects = foundry.utils.duplicate(conditions);
 
 	// Register sheet application classes
 	foundry.documents.collections.Actors.registerSheet(
@@ -192,60 +195,11 @@ export const system_ready = new Promise((success) => {
 			new IntroDialog();
 		}
 
-		CONFIG.statusEffects = foundry.utils.duplicate(conditions);
 		game.availableConditionItems = discoverConditions();
 		addRollableTables();
 		Hooks.callAll("conditionListReady");
-
-		if (game.modules.get("elevationruler").active) {
-			configureElevationRuler();
-		}
 
 		console.log("Ready!");
 		success();
 	});
 });
-
-function configureElevationRuler() {
-	refreshSpeedCategories();
-
-	CONFIG.elevationruler.SPEED.tokenSpeed = function (token) {
-		return token.actor.system.attributes.speed.total;
-	};
-
-	CONFIG.elevationruler.SPEED.maximumCategoryDistance = function (
-		_token,
-		speedCategory,
-		tokenSpeed
-	) {
-		switch (speedCategory.name) {
-			case "single":
-				return speedCategory.multiplier * tokenSpeed;
-			case "double":
-				return speedCategory.multiplier * tokenSpeed;
-		}
-		return Number.POSITIVE_INFINITY;
-	};
-
-	function refreshSpeedCategories() {
-		let single = {
-			name: "single",
-			color: Color.from("#1a4e9d"),
-			multiplier: 1
-		};
-
-		let double = {
-			name: "double",
-			color: Color.from("#0e880e"),
-			multiplier: 2
-		};
-
-		let Unreachable = {
-			name: "unreachable",
-			color: Color.from("#8c1818"),
-			multiplier: Number.POSITIVE_INFINITY
-		};
-
-		CONFIG.elevationruler.SPEED.CATEGORIES = [single, double, Unreachable];
-	}
-}
