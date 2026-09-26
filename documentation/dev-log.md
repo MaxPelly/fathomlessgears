@@ -588,3 +588,30 @@ and `history_event` items and confirm nothing is stripped in practice - this chu
 static, cross-referenced-against-real-data verification is as far as this environment can
 go without a live client, and the plan's own risk warning for this chunk specifically
 calls for that live check before merging.
+
+## Chunk 3 code review (finding, accepted as-is)
+
+Ran `/code-review` (high effort) against the chunk 3 commit. One finding survived
+verification, and was deliberately left unfixed after checking with the maintainer, since
+it's a pre-existing design gap this chunk exposes rather than one it introduces:
+
+- **`item.js`'s `migrateData` fix has no collision protection for its `string_id`
+  backfill.** Making the (previously dead - see above) backfill actually run means any
+  item whose `string_id` is still missing/`"-"` now gets
+  `Utils.toLowerHyphen(source.name)` assigned, and that helper is a plain slugify with no
+  uniqueness check. Two items sharing a name (most plausibly within the same compendium
+  pack, since `findCompendiumItemFromId` - the one place `string_id` is actually looked up
+  by - searches one pack's index at a time) would collide. Checked how bad this actually
+  is in practice: every real `frame_pc`/`history_event` sample inspected for this chunk's
+  own verification has **no** existing explicit `string_id` at all, meaning
+  `findCompendiumItemFromId`'s lookup has presumably never successfully matched anything
+  before now either (the same root cause - `migrateData` never ran) - so this fix doesn't
+  introduce a new risk into previously-safe territory, it turns an already-dead lookup
+  feature into a working one that also happens to lack collision-proofing, and both of
+  those were already latent in `Utils.toLowerHyphen`/`findCompendiumItemFromId`, not
+  written as part of this migration.
+  **Decision (confirmed with the maintainer):** leave as-is. Redesigning `toLowerHyphen`/
+  the lookup to be collision-safe is a content-integrity/product decision (what scope
+  counts as a collision, how to disambiguate) independent of Foundry version compatibility,
+  and out of scope for this migration pass. Flagging here for a future content-authoring
+  or data-integrity pass, not blocking this chunk.
