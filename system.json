@@ -151,8 +151,8 @@
 				"type": "module",
 				"manifest": "https://github.com/MaxPelly/fvtt-token-action-hud-FG/releases/latest/download/module.json",
 				"compatibility": {
-					"minimum": "1.0.0-alpha",
-					"verified": "1.0.0-alpha"
+					"minimum": "1.0.0-alpha1",
+					"verified": "1.0.0-alpha1"
 				}
 			},
 			{
