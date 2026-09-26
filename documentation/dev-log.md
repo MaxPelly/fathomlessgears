@@ -1099,3 +1099,26 @@ Everything remaining is either §9 (separate repo) or requires a live Foundry cl
 sandboxed environment has never had access to at any point in this migration - see every
 chunk's own "Still needs" list above, and the plan document's now-annotated checkboxes,
 for the complete rundown.
+
+## Chunk 6 code review (one finding, considered, no change)
+
+Ran `/code-review` (high effort) against both chunk 6 commits. One finding survived
+verification:
+
+- **Considered, no code change:** gating `gridCollection.configure({ownership: {PLAYER:
+  "NONE"}})` behind `game.user.isGM` (per this chunk's own fix, and the plan's explicit
+  instruction) means this compendium ownership lockdown is never applied in the narrow
+  case where no GM client ever connects during a session. Checked whether this actually
+  narrows real-world coverage versus before: `CompendiumCollection#configure()` writes a
+  world-scoped setting, and Foundry only permits GM users to write world-scoped settings
+  server-side - so a non-GM client's *pre-fix* attempt to call this was already either a
+  silent no-op or a thrown/rejected write, never an actual successful lockdown. The `isGM`
+  guard doesn't reduce coverage in any scenario where the call previously *worked*; it just
+  stops every non-GM client from redundantly attempting (and likely failing) the same
+  write, exactly as the plan asked for. The "no GM has connected yet" edge case is real but
+  narrow (most sessions have the GM connect first, or reconnect while players wait) and
+  isn't a regression this chunk introduced - left as-is rather than adding retry/deferred
+  logic for a low-probability edge case the plan didn't ask for either.
+
+This closes out the code-review cycle for the entire migration as it stands in this
+workspace.
