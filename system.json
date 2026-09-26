@@ -24,91 +24,91 @@
 			"name": "core_macros",
 			"label": "FG Macros",
 			"system": "fathomlessgears",
-			"path": "./packs/core_macros.db",
+			"path": "./packs/core_macros",
 			"type": "Macro"
 		},
 		{
 			"name": "grid_type",
 			"label": "Grid Types",
 			"system": "fathomlessgears",
-			"path": "./packs/grid_types.db",
+			"path": "./packs/grid_types",
 			"type": "Item"
 		},
 		{
 			"name": "conditions",
 			"label": "FG Conditions",
 			"system": "fathomlessgears",
-			"path": "./packs/conditions.db",
+			"path": "./packs/conditions",
 			"type": "Item"
 		},
 		{
 			"name": "touch_of_the_deep",
 			"label": "FG Touch of the Deep",
 			"system": "fathomlessgears",
-			"path": "./packs/touch_of_the_deep.db",
+			"path": "./packs/touch_of_the_deep",
 			"type": "Item"
 		},
 		{
 			"name": "injuries",
 			"label": "FG Injuries",
 			"system": "fathomlessgears",
-			"path": "./packs/injuries.db",
+			"path": "./packs/injuries",
 			"type": "Item"
 		},
 		{
 			"name": "internal_tags",
 			"label": "FG Tags",
 			"system": "fathomlessgears",
-			"path": "./packs/internal_tags.db",
+			"path": "./packs/internal_tags",
 			"type": "Item"
 		},
 		{
 			"name": "fg_roll_tables",
 			"label": "FG Rollable Tables",
 			"system": "fathomlessgears",
-			"path": "./packs/fg_roll_tables.db",
+			"path": "./packs/fg_roll_tables",
 			"type": "RollTable"
 		},
 		{
 			"name": "internal_pc",
 			"label": "FG Fisher Internals",
 			"system": "fathomlessgears",
-			"path": "./packs/internal_pc.db",
+			"path": "./packs/internal_pc",
 			"type": "Item"
 		},
 		{
 			"name": "frame_pc",
 			"label": "FG Fisher Frames",
 			"system": "fathomlessgears",
-			"path": "./packs/frame_pc.db",
+			"path": "./packs/frame_pc",
 			"type": "Item"
 		},
 		{
 			"name": "development",
 			"label": "FG Fisher Developments",
 			"system": "fathomlessgears",
-			"path": "./packs/development.db",
+			"path": "./packs/development",
 			"type": "Item"
 		},
 		{
 			"name": "maneuver",
 			"label": "FG Fisher Maneuvers",
 			"system": "fathomlessgears",
-			"path": "./packs/maneuver.db",
+			"path": "./packs/maneuver",
 			"type": "Item"
 		},
 		{
 			"name": "deep_word",
 			"label": "FG Deep Words",
 			"system": "fathomlessgears",
-			"path": "./packs/deep_word.db",
+			"path": "./packs/deep_word",
 			"type": "Item"
 		},
 		{
 			"name": "background",
 			"label": "FG Fisher Backgrounds",
 			"system": "fathomlessgears",
-			"path": "./packs/background.db",
+			"path": "./packs/background",
 			"type": "Item"
 		}
 	],
@@ -120,8 +120,8 @@
 		}
 	],
 	"compatibility": {
-		"minimum": "12",
-		"verified": "12.343"
+		"minimum": "13.351",
+		"verified": "14.368"
 	},
 	"relationships": {
 		"requires": [
@@ -138,25 +138,33 @@
 				"id": "token-action-hud-core",
 				"type": "module",
 				"compatibility": {
-					"minimum": "2.0",
-					"verified": "2.0.11"
+					"minimum": "2.1.0",
+					"verified": "2.1.1"
 				}
 			},
 			{
-				"id": "socketlib"
+				"id": "socketlib",
+				"type": "module",
+				"compatibility": {
+					"minimum": "1.1.3",
+					"verified": "1.1.4"
+				}
 			},
 			{
 				"id": "statuscounter",
 				"type": "module",
 				"compatibility": {
-					"minimum": "3.0.0",
-					"verified": "3.0.2",
-					"maximum": "3.0.2"
+					"minimum": "3.0.3",
+					"verified": "3.1.2"
 				}
 			}
 		]
 	},
-	"gridDistance": 1,
+	"grid": {
+		"distance": 1,
+		"units": ""
+	},
+	"type": "system",
 	"url": "#{URL}#",
 	"manifest": "#{MANIFEST}#",
 	"download": "#{DOWNLOAD}#",
