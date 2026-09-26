@@ -993,3 +993,47 @@ confirm the system's custom colours (not core's v13/v14 defaults) are what actua
 (touched and untouched) parses cleanly with `postcss`+`postcss-nested`.
 
 This closes out chunk 5 (plan §11 item 5: §7 steps 7-8 + §8) in full.
+
+## Chunk 5 code review (two fixed, two false-positive/pre-existing)
+
+Ran `/code-review` (high effort) against all three chunk 5 commits. Four findings came
+back:
+
+1. **Real regression, confirmed and fixed:** removing the templates' own
+   `<form autocomplete="off">` wrapper (both sheets *and* `HLMItemSheet`) dropped
+   `autocomplete="off"` entirely, since the real `<form>` is now the outer ApplicationV2
+   frame (`tag: "form"`), which nothing set that attribute on. Fixed by setting
+   `this.form.autocomplete = "off"` in `_onRender` on both sheet classes (`this.form` is
+   the real, confirmed-via-docs accessor for the top-level form element) -
+   `HLMItemSheet` didn't have an `_onRender` override before this, so one was added just
+   for this line.
+2. **Real inconsistency, considered, reverted to a different fix:** `deleteItem` was the
+   one handler left in the old instance-method/`event.target` shape while every sibling
+   was rewritten to the static `#onX(event, target)` actions pattern. First tried
+   converting it to match (`static #onDeleteItem`) for consistency - but it's not wired to
+   any `actions` entry (the `.delete-item`/`.delete-overlay` UI it would serve is
+   HTML-commented-out in every partial, deliberately disabled, same as before this
+   migration), and ESLint's `no-unused-private-class-members` correctly flagged the
+   resulting private method as genuinely dead code. Reverted to keeping it a plain public
+   method instead - forcing dead code into the "active" pattern's clothes just to look
+   consistent would have been worse than leaving it honestly distinct, and a lint
+   suppression comment to justify that would have been worse still.
+3. **Pre-existing, not this chunk's doing, no action taken:** `toggleInternalBrokenDisplay`
+   has no callers anywhere in the codebase - confirmed via repo-wide grep, and confirmed
+   this was *already* true before this migration touched it (`items-manager.js`'s
+   `toggleInternalBroken` only ever calls `app.render()`, never this method). The
+   `.card`/`.break-button`/`.post-button` `querySelector` bug fixed earlier in this chunk
+   was a real, worthwhile fix regardless (turning invalid API usage into valid,
+   correctly-scoped selectors), but the method it's part of was already unreachable
+   beforehand - not something to delete as part of a version-compat migration pass.
+4. **Partial false positive:** flagged `context.owner`/`context.editable` as computed
+   every render but unused by any touched template. Checked directly:
+   `fisher-sheet.html`'s `{{editor ... editable=editable}}` call *does* consume
+   `editable` (a real, documented `editor` helper parameter) - only `owner` is genuinely
+   unconsumed (`editor`'s real parameter list has no `owner` field), and that specific
+   `owner=owner` template reference already existed, unchanged, before this migration
+   touched the file. Not a regression from this chunk; left as-is.
+
+Re-verified after the two fixes: `npm run lint` clean (including the
+`no-unused-private-class-members` check that caught the reverted attempt), `npx prettier
+--check` clean, both touched files pass the `.mjs` syntax check.

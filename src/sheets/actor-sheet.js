@@ -200,6 +200,11 @@ export class HLMActorSheet extends foundry.applications.api.HandlebarsApplicatio
 	_onRender(context, options) {
 		super._onRender(context, options);
 
+		//The template's own <form> wrapper (and its autocomplete="off") was removed since
+		//ApplicationV2 supplies the form itself via `tag: "form"` - restore the attribute
+		//on that real form element instead.
+		this.form.autocomplete = "off";
+
 		//Add classes to attribute boxes with special properties
 		Object.keys(this.actor.system.attributes).forEach((key) => {
 			if (Utils.isRollableAttribute(key)) {
@@ -393,6 +398,15 @@ export class HLMActorSheet extends foundry.applications.api.HandlebarsApplicatio
 		this.actor.postItem(safeIdClean(target.dataset.id));
 	}
 
+	/**
+	 * Not currently wired to an `actions` entry - the "delete item" UI it would serve
+	 * (`.delete-item`, `.delete-overlay`) is commented out in every partial that would
+	 * otherwise render it. Left as a plain public method (not the static #onX action-handler
+	 * shape used elsewhere in this class) because a private method with no caller anywhere
+	 * is genuinely dead code and correctly flagged as such by eslint's
+	 * no-unused-private-class-members - forcing it into that shape without wiring it up
+	 * would just be dead code wearing the active pattern's clothes.
+	 */
 	deleteItem(event) {
 		if (!this.testOwnership()) {
 			return false;
