@@ -111,7 +111,6 @@ jobs:
                      ./system.zip                        \
                     `# The files that will be included.` \
                     system.json                          \
-                    template.json                        \
                     README.md                            \
                     LICENSE.txt                          \
                     templates/                           \

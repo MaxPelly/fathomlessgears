@@ -615,7 +615,7 @@ export class HLMActor extends Actor {
 	async removeInteractiveGrid() {
 		this.grid = null;
 		let targetGridString =
-			"systems/fathomlessgears/assets/blank-grid-fish.jpg";
+			"systems/fathomlessgears/assets/blank-grid-fish.JPG";
 		if (this.type == ACTOR_TYPES.fisher) {
 			targetGridString = "systems/fathomlessgears/assets/blank-grid.jpg";
 		}

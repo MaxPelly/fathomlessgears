@@ -69,11 +69,7 @@ export class HLMItem extends Item {
 	 * @override
 	 */
 	static migrateData(source) {
-		// source.system.string_id = "-";
-		if (
-			this.system &&
-			(!this.system.string_id || this.system.string_id === "-")
-		) {
+		if (!source.system?.string_id || source.system.string_id === "-") {
 			if (!source.system) {
 				source.system = {};
 			}

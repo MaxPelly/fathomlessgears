@@ -12,7 +12,7 @@ export default class HLMFishModel extends HLMActorModel {
 		});
 		schema.grid = new fields.StringField({
 			required: true,
-			initial: "systems/fathomlessgears/assets/blank-grid.jpg"
+			initial: "systems/fathomlessgears/assets/blank-grid-fish.JPG"
 		});
 
 		return schema;

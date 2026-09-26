@@ -501,3 +501,90 @@ turned out to understate the actual bug.
 
 Re-verified after both fixes: `npm run lint` clean, `npx prettier --check` clean, both
 touched files pass the `.mjs` syntax check.
+
+## Chunk 3: §2 data models / `documentTypes` / `template.json` removal
+
+This is the plan's own flagged highest-risk chunk ("turning a model on for existing data
+will clean out any fields not in its schema"), so before deleting `template.json` every
+default it provided was checked against the corresponding `defineSchema()`, and - because
+`CONFIG.Item.dataModels`'s key mismatch meant `frame_pc`, `fish_template`, and
+`history_event` have never actually had a model applied before now - their real data was
+checked directly too, not just inferred from the plan's prose:
+
+- **`frame_pc`:** not in source control (`src/packs/frame_pc/` is empty - see the "npm now
+  available" session's finding about several packs never having been exported), so
+  extracted the live compendium to a scratch path (`/tmp`, not `src/packs/`, specifically
+  to avoid repeating that earlier LevelDB-housekeeping-noise mistake) and diffed all 13
+  items' `system` keys against `HLMFrameModel`'s schema: exact match on every item
+  (`source`, `attributes`, `core_integrity`, `repair_kits`, `weight_cap`, `gear_ability`,
+  `gear_ability_name`, `default_unlocks`) - no field the schema would silently drop.
+- **`fish_template`:** never comes from a compendium at all - `gearwright-actor.js`'s
+  `applyTemplate` always constructs it as `{attributes: {}}` in code before creating the
+  embedded item, which is exactly `HLMFishTemplateModel`'s schema shape. No legacy-data
+  risk here at all, by construction.
+- **`history_event`:** JSON *is* committed (`src/packs/injuries/`,
+  `src/packs/touch_of_the_deep/`) - checked directly, no extraction needed. Exact match
+  against `HLMHistoryModel` (`attributes`, `type`, `description`, `mechanics`).
+- Fixed the key mismatch itself: `CONFIG.Item.dataModels` in `fathomlessgears.js` used
+  `frame`/`template`/`history`, but the actual item types are `frame_pc`/`fish_template`/
+  `history_event` - corrected to match, which is what actually turns these three models on
+  for the first time.
+- Added `documentTypes` to `system.json` per plan §2, but **not** verbatim from the plan's
+  own drafted JSON snippet - that snippet marked `tag`, `condition`, `internal_pc`,
+  `internal_npc`, `frame_pc`, and `size` as `{"htmlFields": ["description"]}`, but none of
+  those six models actually define a `description` field (they use `text`, `action_text`,
+  or nothing) - only `HLMHistoryModel` does. Confirmed via `item-sheet.html` too: no
+  `description` field is rendered anywhere for those six types. The plan itself flagged
+  this exact snippet as needing confirmation ("Confirm each type's `htmlFields` against
+  whether its model defines `description`") - this was that confirmation, and it changed
+  the result. Final `documentTypes`: only `Item.history_event` and `Actor.fisher` (which
+  does have a real `biography` field, unlike `Actor.fish`, which doesn't) carry
+  `htmlFields`; everything else is `{}`. `development`/`maneuver`/`deep_word`/`background`
+  left schemaless per the plan's own recommendation (models as a future follow-up).
+- Confirmed every Actor-side default template.json provided is either already expressed as
+  a schema `initial:` (attributes, internals, `fisher_history` minus `touch`, `resources`,
+  `downtime` minus `rollable`, `gridType`, `frame`, `gear_name`/`pilot_portrait` - just
+  spelled with underscores instead of the old template's hyphens, `biography`) or is
+  actually dead/superseded data with no live reader anywhere in `src/`/`templates/`:
+  `fisher_history.touch` and `downtime.rollable` are unused (history is tracked via
+  `history_event` embedded items, not this field; downtime rolls are tracked via the
+  `labels` array, not `rollable`), and `has-interactive-grid` was already superseded by
+  the `fathomlessgears.interactiveGrid` *flag* (not a system field) everywhere it's read.
+- **Real pre-existing bug found and fixed, unrelated to the migration but directly in the
+  path of this chunk's own "verify every default" check:** `fish-schema.js`'s `grid`
+  field's `initial` value was `".../blank-grid.jpg"` - the **fisher's** default image, not
+  `template.json`'s stated fish default (`".../blank-grid-fish.jpg"`). Since
+  `CONFIG.Actor.dataModels.fish` has been active all along (unlike the Item mismatch
+  above), this schema default has been live and wrong since the model was introduced:
+  every new fish actor gets created showing the fisher mech's blank grid image instead of
+  its own. Separately, the actual asset file on disk is `assets/blank-grid-fish.JPG`
+  (capital extension) - `template.json` and `actor.js`'s `removeInteractiveGrid` both
+  referenced the lowercase `.jpg`, which would 404 on any case-sensitive filesystem (i.e.
+  most real Foundry hosting). Fixed both: `fish-schema.js`'s initial and
+  `actor.js:removeInteractiveGrid`'s literal now both point at the real
+  `blank-grid-fish.JPG`.
+- **Real pre-existing bug found and fixed:** `item.js`'s `static migrateData(source)`
+  checked `this.system` - inside a `static` method `this` is the `HLMItem` class itself,
+  never an instance, so `this.system` is always `undefined` and the entire string_id
+  backfill body has never executed. Rewrote to test `source.system?.string_id` instead
+  (per the plan's own suggested fix), so items created without an explicit `string_id`
+  (which is every item created via any of the `constructXData` helpers, all of which use
+  the schema's `"-"` placeholder default) now actually get one derived from their name on
+  load, as originally intended.
+- Deleted `template.json`; removed it from `.github/workflows/main.yml`'s release-zip
+  step (`README.md`/`LICENSE.txt`/etc. untouched).
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean on all touched files,
+full `src/` `.mjs`-copy syntax sweep clean, `system.json` re-validated as JSON after
+editing. The `frame_pc` LevelDB inspection was done via a one-off `extractPack` call to a
+`/tmp` scratch path specifically to avoid touching `packs/` at all (learned from the
+earlier `pull-packs` LevelDB-housekeeping-noise incident), but even so `git status`
+afterward showed the store's internal log/manifest files had rotated from just being
+opened for reading - reverted with `git checkout`/`git clean` on that one pack directory
+before committing.
+
+**Still needs, per §12:** load a real (ideally v12-migrated) world containing `frame_pc`
+and `history_event` items and confirm nothing is stripped in practice - this chunk's
+static, cross-referenced-against-real-data verification is as far as this environment can
+go without a live client, and the plan's own risk warning for this chunk specifically
+calls for that live check before merging.

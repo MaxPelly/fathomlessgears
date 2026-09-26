@@ -119,6 +119,27 @@
 			"path": "lang/en.json"
 		}
 	],
+	"documentTypes": {
+		"Actor": {
+			"fish": {},
+			"fisher": {"htmlFields": ["biography"]}
+		},
+		"Item": {
+			"tag": {},
+			"condition": {},
+			"internal_pc": {},
+			"internal_npc": {},
+			"frame_pc": {},
+			"size": {},
+			"grid": {},
+			"development": {},
+			"maneuver": {},
+			"deep_word": {},
+			"background": {},
+			"fish_template": {},
+			"history_event": {"htmlFields": ["description"]}
+		}
+	},
 	"compatibility": {
 		"minimum": "13.351",
 		"verified": "14.368"
