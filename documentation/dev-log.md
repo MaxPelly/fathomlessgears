@@ -1222,3 +1222,53 @@ check clean. No way to confirm the actual fix resolves the crash without another
 test - please re-test and report back, since a black screen this early in world
 initialization could plausibly have been masking other issues further down the load
 sequence that only become visible once this one clears.
+
+## Second live-Foundry test result: world now loads; a real bug opening the actor sheet
+
+The previous fix worked - the world now fully loads (`"Ready!"` printed, canvas draws,
+templates compile). A separate `token-action-hud-core` issue also surfaced during this
+same test (an upstream bug in that module's own `MigrationManager`, unrelated to this
+system or `token-action-hud-FG`'s own code - diagnosed and handed off for the maintainer
+to track in that module's own repo/session, not fixed here).
+
+Opening a character sheet then threw `Uncaught (in promise) TypeError: can't access
+property "getFlag", context.actor is undefined`, from `HLMActorSheet#_prepareContext`
+(`actor-sheet.js:68`, the very first line that reads `context.actor`).
+
+**Root cause:** AppV1's `ActorSheet.getData()` used to auto-populate `context.actor`
+pointing at the actor document - a convention this whole file's `_prepareContext` (and
+every template it feeds) assumed still holds under `ActorSheetV2`. It doesn't.
+`ActorSheetV2`'s own base `_prepareContext` doesn't set `context.actor` the same way, so
+every one of the ~15 `context.actor.*` reads in this method (plus every `{{actor...}}`
+reference in `fisher-sheet.html`/`fish-sheet.html`/their partials) was reading from
+`undefined`. This is exactly the class of bug that requires seeing the base class's real
+runtime behaviour to catch - `this.actor` (the accessor on the sheet instance) was
+correctly confirmed to exist via TypeDoc back in chunk 5, but *whether the base
+`_prepareContext` copies that onto the returned context object* isn't something TypeDoc's
+signature-only reference could ever answer, and evidently it doesn't.
+
+**Fixed** by explicitly setting `context.actor = this.actor;` as the first line of
+`_prepareContext`, right after the `super()` call - restoring the same shape every
+template already expects, without needing to touch any of the ~15 downstream
+`context.actor.*` reads or any template.
+
+**Same bug, found proactively and fixed before being reported:** `HLMItemSheet` has no
+`_prepareContext` override at all, but `item-sheet.html` references `{{item.name}}`. By
+the same reasoning that just broke the actor sheet, `ItemSheetV2`'s base `_prepareContext`
+almost certainly doesn't auto-populate `context.item` either. Added a `_prepareContext`
+override there too, setting `context.item = this.item` - not yet confirmed broken by a
+live test (the item sheet is still just a placeholder stub, and nobody has opened one
+yet), but there's no reason to wait for a second bug report to fix what's clearly the
+same gap in the sibling class.
+
+Checked every other `ApplicationV2`-based class in this system for the same assumption:
+none of the dialogs, `FshManager`, `FileUploader`, or `GridHoverHUD` extend
+`ActorSheetV2`/`ItemSheetV2`/`DocumentSheetV2` at all (they're built on plain
+`HandlebarsApplicationMixin(ApplicationV2)`), and every context field they expose is
+already built by hand in their own `_prepareContext` overrides rather than assumed from a
+document-sheet base class - this bug is isolated to the two document-sheet classes.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, both files pass the
+`.mjs` syntax check. Please re-test - opening an actor sheet is one of the most
+fundamental interactions in the whole system, so this was worth fixing immediately and
+re-confirming rather than waiting to batch it with other findings.

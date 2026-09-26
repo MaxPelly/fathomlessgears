@@ -64,6 +64,10 @@ export class HLMActorSheet extends foundry.applications.api.HandlebarsApplicatio
 	/** @inheritdoc */
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
+		//ActorSheetV2's base _prepareContext doesn't populate context.actor the way
+		//AppV1's ActorSheet.getData() used to - every template in this system (and most
+		//of this method) expects it, so it needs setting explicitly.
+		context.actor = this.actor;
 		context.showCover =
 			!context.actor.getFlag("fathomlessgears", "initialised") ||
 			this.loading;
