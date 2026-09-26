@@ -1122,3 +1122,52 @@ verification:
 
 This closes out the code-review cycle for the entire migration as it stands in this
 workspace.
+
+## Release prep: `2.0.0-alpha1`
+
+`token-action-hud-FG`'s own v13/v14 migration is done (a separate agent, separate repo,
+sibling checkout at `/home/claude/fvtt-token-action-hud-FG` - see that repo's own
+`documentation/token-action-hud-FG-dev-log.md` and
+`documentation/token-action-hud-FG-v13-v14-plan.md` for its history). Its `module.json`
+already declares `relationships.systems` compatibility with `fathomlessgears 2.0.0`, and
+its own release-coordination plan (§5) fixes this system's release as `2.0.0` (a
+prerelease/alpha tag "would be consistent, since it's gated on the same untested
+migration work"). The maintainer's ask this session was `2.0.0-alpha1` specifically.
+
+- **Stale GitHub org references, fixed.** This repo's remote is `MaxPelly/fathomlessgears`
+  (confirmed via `git remote -v`), but `package.json` (`repository.url`, `bugs.url`,
+  `homepage`), `README.md` (the install manifest URL), and `system.json`'s
+  `token-action-hud-FG` `relationships.requires` entry (its manifest URL) all still said
+  `twelfthrootoftwo` - the repo's previous home. Fixed all of them. Deliberately did
+  **not** touch the two personal-attribution URLs (`system.json`'s author "Natasha
+  Pegler" -> `github.com/twelfthrootoftwo`, `package.json`'s `"author": "Twelfth"`) -
+  those identify a specific person's own account, not this repo's hosting location, and
+  changing them wasn't asked for and isn't implied by a hosting move.
+  `.github/workflows/main.yml` needed no change - it already builds every repo-referencing
+  URL from `${{github.repository}}` rather than hardcoding an org.
+- **`token-action-hud-FG` dependency bump.** `system.json`'s `relationships.requires` entry
+  for `token-action-hud-FG` was still pinned at `0.6.0` (deliberately left alone during
+  the system's own migration chunks, since no compatible release existed yet - see the
+  chunk 5 dev-log entries). Bumped to `1.0.0-alpha` (`minimum` and `verified`), matching
+  what `token-action-hud-FG`'s own plan commits to releasing as.
+- **README:** added a matching `[!WARNING]` alpha-release callout and `[!IMPORTANT]`
+  AI-disclosure callout, mirroring `token-action-hud-FG`'s README (added there at the
+  maintainer's explicit request) - this system's own migration is equally AI-authored and
+  equally untested against a live Foundry client, so the same disclosure applies. Points
+  v12 users at the `1.1.0-rc3` tag (the actual latest pre-migration tag - there is no
+  plain, non-`-rc` `1.1.0`).
+- **Full-repo final verification** (not just touched files, everything): `npm run lint`
+  clean, `npx prettier --check` clean across `src/`, `templates/`, `system.json`,
+  `package.json`, `README.md`; every `.js` file in `src/` passes the `.mjs`-copy syntax
+  check; every `.css` file in `styles/` parses with `postcss`+`postcss-nested`; every
+  `.html` file in `templates/` (not just the ones touched during this migration)
+  precompiles as a Handlebars template without error.
+
+**Credentials note:** this session has no working git push/fetch access to either repo's
+GitHub remote right now (`Permission denied (publickey)` on both `git fetch` and
+`git push --dry-run` against `fathomlessgears`, same for `fvtt-token-action-hud-FG`) -
+despite the local `refs/remotes/origin/main` ref already matching this session's own
+latest local commit, which this session cannot explain (no `git push` was ever run from
+here). **Actual tagging, pushing, and publishing the GitHub release for either repo could
+not be done from this session** - that needs to happen wherever push access actually
+works, or with working credentials restored here.

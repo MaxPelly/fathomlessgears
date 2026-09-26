@@ -149,10 +149,10 @@
 			{
 				"id": "token-action-hud-FG",
 				"type": "module",
-				"manifest": "https://github.com/twelfthrootoftwo/fvtt-token-action-hud-FG/releases/latest/download/module.json",
+				"manifest": "https://github.com/MaxPelly/fvtt-token-action-hud-FG/releases/latest/download/module.json",
 				"compatibility": {
-					"minimum": "0.6.0",
-					"verified": "0.6.0"
+					"minimum": "1.0.0-alpha",
+					"verified": "1.0.0-alpha"
 				}
 			},
 			{

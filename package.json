@@ -10,7 +10,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/twelfthrootoftwo/fathomlessgears.git"
+		"url": "git+https://github.com/MaxPelly/fathomlessgears.git"
 	},
 	"keywords": [
 		"FoundryVTT"
@@ -18,9 +18,9 @@
 	"author": "Twelfth",
 	"license": "ISC",
 	"bugs": {
-		"url": "https://github.com/twelfthrootoftwo/fathomlessgears/issues"
+		"url": "https://github.com/MaxPelly/fathomlessgears/issues"
 	},
-	"homepage": "https://github.com/twelfthrootoftwo/fathomlessgears#readme",
+	"homepage": "https://github.com/MaxPelly/fathomlessgears#readme",
 	"devDependencies": {
 		"@eslint/js": "^9.16.0",
 		"@foundryvtt/foundryvtt-cli": "^3.0.4",
