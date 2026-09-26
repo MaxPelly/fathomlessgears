@@ -615,3 +615,135 @@ it's a pre-existing design gap this chunk exposes rather than one it introduces:
   counts as a collision, how to disambiguate) independent of Foundry version compatibility,
   and out of scope for this migration pass. Flagging here for a future content-authoring
   or data-integrity pass, not blocking this chunk.
+
+## Chunk 4: §7 ApplicationV2 migration, steps 1-6
+
+Converted every non-sheet application in the codebase (dialogs, file/data-file managers,
+the grid hover HUD) plus the grid DOM helpers they depend on, following the plan's own
+step order (small to large) across four commits. `HLMActorSheet`/`HLMItemSheet` remain
+ApplicationV1 - that's steps 7-8, a later chunk - so every touched class that has a
+still-V1 caller or sibling was bridged rather than assumed converted; each is called out
+below.
+
+**Step 1 - `ConfirmDialog`:** internals rewritten onto `DialogV2.confirm({window:{title},
+content, rejectClose:false})` (signature confirmed against the real v14 docs' own worked
+example). Public constructor API (`title, content, callbackAction, args`) unchanged, so
+`items-manager.js`/`fsh-manager.js`'s call sites needed no edits. Dismissing the dialog
+(closing without a button) now explicitly invokes `callbackAction(false, args)` rather
+than never firing at all (the old AppV1 `Dialog` only invoked a button's own callback) -
+a deliberate small behaviour change, since leaving a promise permanently unresolved is
+worse than treating "dismissed" as "cancelled", and every caller's callback already
+no-ops on `false`.
+
+**Step 2 - `HLMApplication` base:** `HandlebarsApplicationMixin(ApplicationV2)`; the
+loading-overlay helpers (`startLoading`/`updateLoadingMessage`/`stopLoading`) now query
+`this.element` instead of the global `document`, per the plan's general rule (these ids
+only ever exist inside `fsh-manager.html`, so this was already fragile - just not
+previously flagged as a bug since only one app instance ever rendered that markup at a
+time).
+
+**Step 3 - `IntroDialog`, `ReserveApDialog`, `NarrativeRollDialog`, `RollDialog`:**
+`static DEFAULT_OPTIONS`/`PARTS`; `getData` -> `_prepareContext`; `activateListeners(html)`
+-> `_onRender(context, options)` using `this.element` and native `addEventListener`;
+`.btn` clicks -> `data-action`/`actions` map (static private methods, framework-bound
+`this`); jQuery `.click()`-simulated checkbox/radio pre-ticking replaced with
+`{{checked ...}}`/the existing `{{#ifcond}}` helper directly in the templates, which also
+meant actually wiring `context.focused`/`context.difficulty` into `_prepareContext` (the
+old code computed `this.focused`/`this.difficulty` but only ever *simulated a click* to
+reflect it in the DOM - the template itself never received the value). Removed `<form>`
+wrappers from every template that doesn't submit data, per the plan's general rule.
+**Deliberately did not move `this.render(...)` out of these constructors** despite the
+plan's general suggestion to do so: `RollDialog`'s return value from `new RollDialog(...)`
+is exactly what `game.rollHandler.startRollDialog(...)` returns, which is one of the
+system's frozen public-API methods (token-action-hud-FG calls it directly, per this plan's
+own guiding decisions section) - keeping `render()` inside the constructor preserves that
+return value's synchronous availability with zero call-site changes anywhere, which is
+lower-risk than restructuring every call site to await a separate `.render()` call.
+**Deliberately preserved, not fixed,** two bugs plan §10 already tracks for a later,
+dedicated chunk: `NarrativeRollDialog`'s `additional`/`additionalLabels` mismatch (the
+"other" input's change handler and `calculateDieTotal()` both use `this.additional`, but
+`triggerRoll` checks `this.additionalLabels`, which is never actually updated - so the
+"other" bonus box's value never reaches the actual roll) and `LabelRollElement` being
+constructed with 2 arguments when its constructor only takes 1. Both bugs are inside code
+this chunk otherwise rewrote, but fixing them isn't a mechanical migration change - it
+needs a decision about what the intended combined behaviour actually is - so they were
+carried over exactly as before.
+`Utils.activateButtons` (used across all four dialogs plus the not-yet-converted
+`actor-sheet.js`) now takes an `HTMLElement`; the one remaining jQuery caller bridges with
+`html[0]`.
+
+**Step 4 - `FileUploader`, `FshManager`:** same `DEFAULT_OPTIONS`/`PARTS`/`_prepareContext`/
+`_onRender`/actions-map treatment. **Real pre-existing bug found and fixed while
+converting `activateListeners`:** `FileUploader`'s constructor defaults `options` to
+`null` and line 49's old body read `this.uploaderOptions.importNameOption` with no
+optional chaining (unlike line 13, which does use `?.`) - `fsh-manager.js:131`'s
+`new FileUploader(this)` call passes no options at all, so every time a user clicked
+"Add new" in the FSH manager (the plain, no-target-file upload path), rendering the
+uploader dialog threw `TypeError: Cannot read properties of null`. Fixed by adding the
+missing `?.`, matching the already-correct line 13. `FshManager.isOpen` - previously a
+manually-toggled `static` field that could drift from reality (e.g. if `close()` was
+never reached on an error path) - is now a getter backed by the real
+`foundry.applications.instances` registry (confirmed a real `Map<string, ApplicationV2>`
+against the docs) keyed by a fixed `static ID`, so no external caller
+(`fathomlessgears.js`'s intro dialog flow, the compendium sidebar button) needed to
+change since the read-only `FshManager.isOpen` access pattern itself is unchanged.
+
+**Steps 5-6 - `GridHoverHUD` and the grid DOM helpers:** `GridHoverHUD` ->
+`HandlebarsApplicationMixin(ApplicationV2)` with `window: {frame: false, positioned:
+false}` (both confirmed real `ApplicationWindowConfiguration` fields; position stays
+CSS-driven via the existing `gridHUDPosition`-derived class, matching prior behaviour -
+no `position:` width/height carried over since `positioned:false` makes JS-driven
+positioning inert anyway). `this.object` -> `this.actor` throughout (this class, its
+module-level helper functions, and every external reader - checked, there were none
+outside this file). `this.closing` (an AppV1-only property this class only ever *read*,
+never set - it's core's own internal flag) doesn't exist on `ApplicationV2`; replaced with
+`this.state === this.constructor.RENDER_STATES.CLOSING`. `RENDER_STATES` itself is
+confirmed real (`Record<string, number>`, "the sequence of rendering states that describe
+the Application life-cycle"), but TypeDoc doesn't expose an object literal's member names
+for a value marked `= ...`, so the exact key `CLOSING` couldn't be doc-confirmed the way
+almost everything else in this migration has been - this relies on long-standing,
+stable Foundry convention instead (unchanged since AppV1's own `RENDER_STATES`) and needs
+a live-client check, flagged below.
+`Grid#activateListeners` (`grid-base.js`) now takes an `HTMLElement`
+(`querySelectorAll`/`addEventListener`) instead of jQuery `.find().click()`;
+`grid-space.js` needed no changes at all (already fully native DOM from chunk 1).
+The one remaining V1 caller (`actor-sheet.js`, not converted until a later chunk) bridges
+with `html[0]`, and - since `Grid#activateListeners` now returns a raw `HTMLElement`
+instead of the jQuery object it received - the caller no longer reassigns `html` to its
+return value (the old reassignment was already a no-op passthrough, since the old
+implementation just returned whatever jQuery object it was given).
+Also fixed, per chunk 1's own explicit deferral note ("these become closeActorSheetV2 /
+closeApplicationV2 ... in the §7 AppV2 chunk"): kept the V1 `closeApplication` hook
+registration (still needed - `HLMItemSheet` is V1 until a later chunk and has no other
+listener covering it) and added a `closeApplicationV2` registration alongside it, so the
+grid HUD still clears when any of the newly-V2 dialogs/managers this chunk converted are
+closed. `closeActorSheet` is untouched (`HLMActorSheet` itself isn't V2 yet).
+
+**New, unrelated-to-migration bug noticed, deliberately not fixed:**
+`checkShowGridRequirements`'s `setTimeout` callback is a plain `function () {...}`, not an
+arrow function, so `this.lock` inside it doesn't refer to the `GridHoverHUD` instance (it
+was already broken this way before this chunk touched anything nearby, and the chunk's
+changes don't require touching this method's body at all). Likely means the "else" branch
+always treats the HUD as unlocked regardless of actual lock state. Flagged here rather
+than fixed, matching the same "pre-existing, unrelated design/logic bug -> document, don't
+fix mid-migration" precedent set for the `NarrativeRollDialog` bugs above and the
+`string_id` collision gap from chunk 3.
+
+**Verification:** `npm run lint` clean and `npx prettier --check` clean after every
+commit in this chunk, full `src/` `.mjs`-copy syntax sweep clean, every touched Handlebars
+template precompiled without error via a temporary, unsaved `npm install handlebars`
+(removed again immediately after each check - never touched `package.json`).
+
+**Still needs, per §12 and the doc-verification gaps above:**
+- A live client to confirm `RENDER_STATES.CLOSING` is the correct member name (checked via
+  established convention, not TypeDoc, since TypeDoc doesn't expose enum member names for
+  a static property whose initializer is elided as `= ...`).
+- Confirm `window.title` string options (e.g. `"INTRO.title"`, `"RESERVEDIALOG.name"`)
+  are lazily localized by core at render time rather than needing
+  `game.i18n.localize(...)` applied eagerly in `DEFAULT_OPTIONS` - assumed based on
+  established ApplicationV2 convention (raw localization keys are the norm across core
+  and every major system), not confirmed via TypeDoc (which only documents the `title`
+  accessor's return type, not its localization behaviour).
+- All of §12's dialog/HUD-relevant test items: FSH manager import/update/delete + intro
+  dialog flow, sidebar/token hover -> grid HUD, `G` lock, HUD position setting, all roll
+  types' dialogs (attribute, reel, narrative, tag), pop-out behaviour.
