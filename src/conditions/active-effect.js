@@ -1,33 +1,27 @@
 import {NUMBERED_CONDITIONS} from "./conditions.js";
 
 export class HLMActiveEffect extends ActiveEffect {
+	/**
+	 * `Actor#transferEffects` (src/actors/actor.js) already gates its own body on
+	 * `game.user.id == this.firstOwner().id`, so it's safe (and necessary - that gate
+	 * doesn't correlate with which client made this particular edit) to call it
+	 * unconditionally here on every connected client; exactly one of them will pass the
+	 * inner check. `this.parent` can be null on v14 (effects can be world/compendium
+	 * documents with no actor parent), hence the optional chains.
+	 */
 	_onCreate(...args) {
 		super._onCreate(...args);
-		this._transferEffectsIfOriginatingClient(args);
+		this.parent?.transferEffects?.();
 	}
 
 	_onDelete(...args) {
 		super._onDelete(...args);
-		this._transferEffectsIfOriginatingClient(args);
+		this.parent?.transferEffects?.();
 	}
 
 	_onUpdate(...args) {
 		super._onUpdate(...args);
-		this._transferEffectsIfOriginatingClient(args);
-	}
-
-	/**
-	 * `transferEffects` re-derives the actor's effect list from its items, which every
-	 * connected client's own copy of the actor needs done exactly once - not once per
-	 * client. `userId` is always the last argument across `_onCreate`/`_onUpdate`/
-	 * `_onDelete`, regardless of their differing arities. `this.parent` can be null on
-	 * v14 (effects can be world/compendium documents with no actor parent).
-	 * @param {Array} args The lifecycle hook's original arguments
-	 */
-	_transferEffectsIfOriginatingClient(args) {
-		if (args.at(-1) === game.user.id) {
-			this.parent?.transferEffects?.();
-		}
+		this.parent?.transferEffects?.();
 	}
 
 	hasCounterFlag() {

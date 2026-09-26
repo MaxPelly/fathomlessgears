@@ -439,5 +439,65 @@ full `src/` `.mjs`-copy syntax sweep clean, grepped for any leftover `elevationr
 change needed (plan confirms nothing to do there).
 
 Still needs, per §12: confirm on both versions that status effects created via
-`toggleStatusEffect` (no duration) still show token icons, and specifically watch for the
-duplicate-linked-token race noted above.
+`toggleStatusEffect` (no duration) still show token icons.
+
+## Chunk 2 code review (findings + fixes)
+
+Ran `/code-review` (high effort) against the chunk 2 commit before starting chunk 3, per
+the maintainer's request. Both findings were confirmed real and fixed; both are more
+serious than the caveats chunk 2's own dev-log entry had already flagged, so this section
+replaces (not just supplements) that entry's "duplicate-linked-token race" caveat, which
+turned out to understate the actual bug.
+
+1. **Real bug, confirmed and fixed:** the new `_transferEffectsIfOriginatingClient` gate
+   in `active-effect.js` (`args.at(-1) === game.user.id`) broke the ballast/character
+   effect-transfer feature outright, rather than just having a narrow race. `Actor#transferEffects`
+   (`src/actors/actor.js:155-160`) already has its own independent gate,
+   `game.user.id == this.firstOwner().id` - `firstOwner()` returns whichever *player* owns
+   the actor (falling back to the active GM only if no player does), which has nothing to
+   do with who happened to make the particular edit that triggered the hook. Concretely: a
+   GM toggling a condition via the token HUD on a player-owned actor fires the hook with
+   `userId` = the GM's id on every client. The new outer gate meant only the GM's own
+   client even attempted the call - but the GM usually isn't `firstOwner()` of a
+   player-owned actor, so the inner check then failed there too, and the actual owning
+   player's client was already filtered out by the outer gate before it ever reached the
+   inner check. Net effect: the transfer silently never ran for the single most common way
+   of toggling a condition. Fixed by removing the outer gate entirely and calling
+   `this.parent?.transferEffects?.()` unconditionally after `super` on all three lifecycle
+   methods, letting `firstOwner()`'s existing check be the sole gate again (exactly the
+   pre-chunk-2 behaviour, just reordered to run after `super` and null-guarded for v14).
+2. **Real bug, confirmed and fixed:** the "preferred" `_drawEffects` design (temporarily
+   shadowing `appliedEffects`/`temporaryEffects` directly on the shared `Actor` document
+   while awaiting `super._drawEffects()`) raced with more than just "two linked tokens of
+   the same actor redrawing at once", as chunk 2's own caveat assumed - it also raced with
+   `Actor#transferEffects` itself, which reads `this.appliedEffects` directly on that same
+   actor (`actor.js:169`). Toggling a status effect on a linked token's actor fires both
+   `_onCreate` (→ `transferEffects()`, reading `appliedEffects`) and a redraw of that
+   actor's own token (→ `_drawEffects()`, shadowing `appliedEffects`) off the same change,
+   with no ordering guarantee between the two - so the transfer could read this token's
+   filtered subset instead of the actor's real effect list, corrupting what gets mirrored
+   to the paired ballast/character actor. A same-actor-single-token repro, not just the
+   duplicate-token edge case originally disclosed.
+   - Considered a narrower fix (shadow `Token#actor` itself, via a
+     `Object.create(actor, {...})` stand-in, instead of the shared actor's own property -
+     confines the shadow to reads through this one token instance). Rejected: core's real
+     `_drawEffects()` body is closed-source and undocumented at the implementation level
+     (TypeDoc only has signatures - see the migration reference doc §2), so there's no way
+     to confirm it wouldn't internally invoke some other actor method/getter with `this`
+     bound to the stand-in: if that method touches a native private class field (`#foo`),
+     it throws immediately, because a prototype-linked stand-in is not a real instance of
+     the `Actor` class for private-field purposes. Verifying that risk away isn't possible
+     without live core source or a running client.
+   - Fixed instead by reverting to the plan's other explicitly-sanctioned option: kept
+     `_drawEffects` as the same hand-rolled, pre-migration reimplementation it already was
+     (never delegating to `super`, never touching the actor at all), only swapping its
+     effect-list source to `getTokenEffectsToDraw(this)` in place of the old hardcoded
+     `this.actor?.temporaryEffects`. No shared state is mutated, so the race is eliminated
+     rather than narrowed. Trade-off (acknowledged, not fixed): this reimplementation's
+     PIXI drawing mechanics (container clearing, z-ordering, `renderFlags.set`) are
+     unverified against real v13/v14 core beyond "this is what already shipped before this
+     migration" - same residual risk the plan's phrasing ("a copy of a core function")
+     originally flagged, just no longer compounded by a new concurrency bug on top of it.
+
+Re-verified after both fixes: `npm run lint` clean, `npx prettier --check` clean, both
+touched files pass the `.mjs` syntax check.

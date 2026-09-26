@@ -22,37 +22,55 @@ export class HLMToken extends foundry.canvas.placeables.Token {
 		game.hoveredToken = null;
 	}
 	/**
-	 * Draw the actor's effect icons, filtered to only those applicable to this token (see
-	 * `filterEffectList`), by temporarily substituting the actor's effect list core reads
-	 * from and delegating everything else to core's own `_drawEffects` implementation.
-	 * This avoids re-implementing core's drawing logic (which differs between v13 and
-	 * v14 - see `getTokenEffectsToDraw`), while still applying the system's own filtering.
+	 * Draw the effect icons applicable to this token (see `filterEffectList`). Kept as a
+	 * v12-core-derived reimplementation rather than delegating to `super._drawEffects()`
+	 * via a temporarily-shadowed actor effect getter: the shared Actor document is read
+	 * directly by other code that can run concurrently with an `await` inside this method
+	 * - notably `Actor#transferEffects` (src/actors/actor.js), which reads
+	 * `this.appliedEffects` on that same actor whenever an effect changes, which is
+	 * exactly when a redraw like this one is also triggered. Shadowing the real actor's
+	 * property (even temporarily, even restored in a `finally`) would let that unrelated
+	 * read observe this token's filtered subset instead of the actor's real effect list.
+	 * Only the effect-list source has changed from the pre-migration version of this
+	 * method: see `getTokenEffectsToDraw` for the v13/v14 split it replaces.
 	 * @override
 	 */
 	async _drawEffects() {
-		const actor = this.actor;
-		if (!actor) return super._drawEffects();
+		this.effects.renderable = false;
 
-		const effects = this.filterEffectList(getTokenEffectsToDraw(this));
-		const propertyName = CONST.ACTIVE_EFFECT_SHOW_ICON
-			? "appliedEffects"
-			: "temporaryEffects";
-		const descriptor = Object.getOwnPropertyDescriptor(actor, propertyName);
+		// Clear Effects Container
+		this.effects.removeChildren().forEach((c) => c.destroy());
+		this.effects.bg = this.effects.addChild(new PIXI.Graphics());
+		this.effects.bg.zIndex = -1;
+		this.effects.overlay = null;
 
-		Object.defineProperty(actor, propertyName, {
-			configurable: true,
-			get: () => effects
-		});
+		// Categorize new effects
+		const activeEffects = this.filterEffectList(
+			getTokenEffectsToDraw(this)
+		);
+		const overlayEffect = activeEffects.findLast(
+			(e) => e.img && e.getFlag("core", "overlay")
+		);
 
-		try {
-			await super._drawEffects();
-		} finally {
-			if (descriptor) {
-				Object.defineProperty(actor, propertyName, descriptor);
-			} else {
-				delete actor[propertyName];
-			}
+		// Draw effects
+		const promises = [];
+		for (const [i, effect] of activeEffects.entries()) {
+			if (!effect.img) continue;
+			const promise =
+				effect === overlayEffect
+					? this._drawOverlay(effect.img, effect.tint)
+					: this._drawEffect(effect.img, effect.tint);
+			promises.push(
+				promise.then((e) => {
+					if (e) e.zIndex = i;
+				})
+			);
 		}
+		await Promise.allSettled(promises);
+
+		this.effects.sortChildren();
+		this.effects.renderable = true;
+		this.renderFlags.set({refreshEffects: true});
 	}
 
 	filterEffectList(actorEffects) {
