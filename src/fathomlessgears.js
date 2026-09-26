@@ -68,15 +68,17 @@ Hooks.once("init", async function () {
 	CONFIG.ActiveEffect.documentClass = HLMActiveEffect;
 
 	// Register sheet application classes
-	Actors.unregisterSheet("core", ActorSheet);
-	Actors.registerSheet("fathomlessgears", HLMActorSheet, {
-		makeDefault: true
-	});
+	foundry.documents.collections.Actors.registerSheet(
+		"fathomlessgears",
+		HLMActorSheet,
+		{makeDefault: true}
+	);
 
-	Items.unregisterSheet("core", ItemSheet);
-	Items.registerSheet("fathomlessgears", HLMItemSheet, {
-		makeDefault: true
-	});
+	foundry.documents.collections.Items.registerSheet(
+		"fathomlessgears",
+		HLMItemSheet,
+		{makeDefault: true}
+	);
 
 	//Load templates
 	await preloadHandlebarsTemplates();

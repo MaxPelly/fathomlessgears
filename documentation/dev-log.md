@@ -101,4 +101,54 @@ what to verify by hand.
 
 ### §4 Deprecated globals
 
-_(pending)_
+- `renderTemplate` (24 call sites across `message-handler.js`, `roll-handler.js`,
+  `attack.js`, `roll-table.js`, `reel.js`, `item.js`, `hud-actions.js`, `actor.js`,
+  `grid-base.js`) → `foundry.applications.handlebars.renderTemplate`.
+- `loadTemplates` (`utilities/templates.js`) →
+  `foundry.applications.handlebars.loadTemplates`.
+- `TextEditor.enrichHTML` (`actor-sheet.js`) →
+  `foundry.applications.ux.TextEditor.implementation.enrichHTML`; dropped `async: true`
+  (no longer a valid option), added `relativeTo: this.actor` so relative UUID links in
+  the biography resolve correctly.
+- Sheet registration (`fathomlessgears.js`): dropped the `Actors.unregisterSheet("core",
+  ActorSheet)` / `Items.unregisterSheet(...)` calls (core no longer registers default
+  sheets in v13+, so these were already no-ops) and moved registration to
+  `foundry.documents.collections.Actors/Items.registerSheet(...)`.
+- `Token` / `TokenDocument` base classes (`tokens/token.js`) →
+  `foundry.canvas.placeables.Token` / `foundry.documents.TokenDocument`.
+- `CompendiumCollection` (`data-files/file-utils.js`) →
+  `foundry.documents.collections.CompendiumCollection`. Also dropped the broken
+  `path: ["packs/", compendiumName].join()` (this produced the literal string
+  `"packs/,name"` since `Array.join()` defaults to a comma separator - the option is
+  simply omitted now, matching how the plan flagged it).
+- All remaining bare `$(...)` jQuery-global usages outside sheet `activateListeners`
+  bodies replaced with native DOM: `grid-base.js` (`highlightInternal`, `renderInternal`,
+  `popInternal`, `unpopInternal` now use `event.target.closest(...)` /
+  `querySelector(...)` / `element.style.*` instead of jQuery `.closest()`/`.css()`), and
+  correspondingly `grid-space.js`'s `toggleHighlight` (which receives the element these
+  functions produce) now uses `querySelector` chains instead of `.find()`. This was
+  pulled forward from part of plan §7 item 6, since `toggleHighlight`'s jQuery-shaped
+  parameter and `grid-base.js`'s bare `$(...)` calls are the same coupled piece of code -
+  fixing one without the other would have left a broken half-state. The grid's outer
+  `activateListeners(html)` (still `html.find(...).click(...)`, called from the AppV1
+  actor sheet) is untouched and stays jQuery until §7 converts the actor sheet itself.
+  `actor-sheet.js:256-257`'s `$(this.element).get(0)` → `this.element[0]` (this.element
+  is still a jQuery collection until the sheet itself becomes ApplicationV2 in §7; the
+  fix here is just removing the redundant bare `$()` re-wrap, not the sheet's jQuery-ness
+  itself), and the `addListeners()` call now passes `this.element[0]` as the scan root
+  instead of defaulting to the whole `document`.
+- **Deferred to §6 (not chunk 1):** the three `Color.from(...)` calls in
+  `configureElevationRuler` - that whole function is dead code being deleted in §6, so
+  fixing its globals now would be wasted work.
+
+### Not yet done (tracked for later chunks)
+- §2 data models / `documentTypes` / `template.json` removal.
+- §5 active effects / token effect drawing, §6 ruler replacement.
+- §7 ApplicationV2 migration (all dialogs, apps, HUD, item/actor sheets).
+- §8 CSS/theming.
+- §9 token-action-hud-FG (separate repo).
+- §10 smaller cleanup items.
+- Manual, environment-dependent follow-ups already called out above: re-exporting
+  `src/packs/fg_roll_tables/*.json` from a live v13 world, and running `npm run
+  lint`/`npm install` (not possible in this sandbox - no npm binary available, though
+  network access to the registry does work).

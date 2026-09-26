@@ -240,7 +240,7 @@ export class MessageHandler {
 		let success = roll.total >= tagRoll.success;
 		let rollSpecs = JSON.stringify(tagRoll);
 
-		let html = await renderTemplate(
+		let html = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/partials/tag-roll.html",
 			{
 				roll: await constructCollapsibleRollMessage(roll),
@@ -302,7 +302,7 @@ export class MessageHandler {
 		fromUuid(event.target.dataset.tagitemid).then((tagData) => {
 			const popout = document.createElement("div");
 			popout.classList.add("tag-popout", "popout", "flex-col");
-			renderTemplate(
+			foundry.applications.handlebars.renderTemplate(
 				"systems/fathomlessgears/templates/partials/tag-tooltip.html",
 				{
 					tag: tagData
@@ -335,7 +335,7 @@ export class MessageHandler {
 				rollSpecs.name = tagData.name;
 				roll = await this.getTagRollDisplay(rollSpecs);
 			}
-			renderTemplate(
+			foundry.applications.handlebars.renderTemplate(
 				"systems/fathomlessgears/templates/messages/tag-message.html",
 				{
 					tag: tagData,

@@ -109,7 +109,7 @@ export class AttackHandler {
 			formula: attackRoll.formula,
 			total: attackRoll.total
 		};
-		const hitRollDisplay = await renderTemplate(
+		const hitRollDisplay = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/partials/to-hit-partial.html",
 			{
 				modifiers: modifierStack,
@@ -195,7 +195,7 @@ export class AttackHandler {
 			},
 			label: game.i18n.localize("ROLLTEXT.hitColumn")
 		};
-		const result = await renderTemplate(
+		const result = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/partials/location-roll.html",
 			{
 				zoneRoll: zoneRoll,

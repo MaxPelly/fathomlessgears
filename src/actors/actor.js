@@ -568,7 +568,7 @@ export class HLMActor extends Actor {
 	async triggerRolledItem(rollParams) {
 		const internal = this.items.get(rollParams.internalId);
 		const rollOutput = await game.rollHandler.rollTargeted(rollParams);
-		let displayString = await renderTemplate(
+		let displayString = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/internal.html",
 			{
 				internal: internal,
@@ -597,7 +597,7 @@ export class HLMActor extends Actor {
 				newTag.rollspecs = JSON.stringify(newTag.system.roll);
 				tagsCopy.push(newTag);
 			});
-			let tagButtonHtml = await renderTemplate(
+			let tagButtonHtml = await foundry.applications.handlebars.renderTemplate(
 				"systems/fathomlessgears/templates/partials/tag-buttons.html",
 				{
 					tags: tagsCopy

@@ -14,7 +14,7 @@ export class ReelHandler {
 				? "MESSAGE.reelPC"
 				: "MESSAGE.reelNPC";
 		const reelMessage = game.i18n.localize(reelMessageText);
-		const rollString = await renderTemplate(
+		const rollString = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/partials/labelled-roll-partial.html",
 			{
 				label_left: game.i18n

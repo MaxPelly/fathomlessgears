@@ -119,8 +119,8 @@ export class GridSpace {
 	 */
 	toggleHighlight(gridElement) {
 		const thisCover = gridElement
-			.find(`#gridspace-${this.id}`)
-			.find(".cover")[0];
+			.querySelector(`#gridspace-${this.id}`)
+			.querySelector(".cover");
 		thisCover.classList.toggle("highlight-cover");
 	}
 

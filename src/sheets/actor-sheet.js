@@ -46,13 +46,14 @@ export class HLMActorSheet extends ActorSheet {
 			"fathomlessgears",
 			"initialised"
 		);
-		context.biographyHTML = await TextEditor.enrichHTML(
-			context.actor.system.biography,
-			{
-				secrets: this.document.isOwner,
-				async: true
-			}
-		);
+		context.biographyHTML =
+			await foundry.applications.ux.TextEditor.implementation.enrichHTML(
+				context.actor.system.biography,
+				{
+					secrets: this.document.isOwner,
+					relativeTo: this.actor
+				}
+			);
 		this.getResourceLabels(context.actor);
 		context.scan_text = await context.actor.getScanText();
 		context.template =
@@ -253,8 +254,8 @@ export class HLMActorSheet extends ActorSheet {
 			);
 		}
 
-		game.tagHandler.transformTagNameToButton($(this.element).get(0));
-		game.tagHandler.addListeners();
+		game.tagHandler.transformTagNameToButton(this.element[0]);
+		game.tagHandler.addListeners(this.element[0]);
 	}
 
 	buildHistoryForDisplay(items) {

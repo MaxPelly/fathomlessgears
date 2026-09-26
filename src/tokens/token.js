@@ -2,15 +2,15 @@ import {BALLAST_TOKEN_CONDITIONS} from "../conditions/conditions.js";
 
 /**
  * Extend the base TokenDocument to support resource type attributes.
- * @extends {TokenDocument}
+ * @extends {foundry.documents.TokenDocument}
  */
-export class HLMTokenDocument extends TokenDocument {}
+export class HLMTokenDocument extends foundry.documents.TokenDocument {}
 
 /**
  * Extend the base Token class to implement additional system-specific logic.
- * @extends {Token}
+ * @extends {foundry.canvas.placeables.Token}
  */
-export class HLMToken extends Token {
+export class HLMToken extends foundry.canvas.placeables.Token {
 	_onHoverIn(...args) {
 		super._onHoverIn(...args);
 		game.hoveredToken = this;

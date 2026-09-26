@@ -254,7 +254,7 @@ export class Grid {
 	 * @param {bool} highlight Whether to turn on or off highlight display
 	 */
 	highlightInternal(event, originSpace) {
-		const popout = $(event.target).closest(".grid-display");
+		const popout = event.target.closest(".grid-display");
 		originSpace.parentRegion.gridSpaces.forEach((row) => {
 			row.forEach((space) => {
 				if (space.containsInternal(originSpace.internal)) {
@@ -265,18 +265,19 @@ export class Grid {
 	}
 
 	async renderInternal(event, uuid) {
-		const display = $(event.target).closest(".grid-display");
-		const popout = display.find("#internal-popout")[0];
+		const display = event.target.closest(".grid-display");
+		const popout = display.querySelector("#internal-popout");
 		if (popout) {
 			const viewedInternal = this.actor.items.get(uuid);
-			const internalHtml = await renderTemplate(
-				"systems/fathomlessgears/templates/partials/internal-partial.html",
-				{
-					internal: viewedInternal,
-					popout: true,
-					fixedState: true
-				}
-			);
+			const internalHtml =
+				await foundry.applications.handlebars.renderTemplate(
+					"systems/fathomlessgears/templates/partials/internal-partial.html",
+					{
+						internal: viewedInternal,
+						popout: true,
+						fixedState: true
+					}
+				);
 			popout.innerHTML = internalHtml;
 		}
 		return popout;
@@ -288,8 +289,8 @@ export class Grid {
 	 */
 	async popInternal(event, uuid) {
 		const popout = await this.renderInternal(event, uuid);
-		$(popout).css("z-index", 150);
-		$(popout).css("max-width", 350);
+		popout.style.zIndex = "150";
+		popout.style.maxWidth = "350px";
 		popout.classList.toggle("visible");
 	}
 
@@ -297,8 +298,8 @@ export class Grid {
 	 * Remove a popped-out internal's details
 	 */
 	async unpopInternal(event) {
-		const display = $(event.target).closest(".grid-display");
-		const popout = display.find("#internal-popout")[0];
+		const display = event.target.closest(".grid-display");
+		const popout = display.querySelector("#internal-popout");
 		popout.innerHTML = "";
 		popout.classList.toggle("visible");
 	}

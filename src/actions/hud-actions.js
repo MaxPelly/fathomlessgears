@@ -131,7 +131,7 @@ export class HUDActionCollection {
 				.localize("MESSAGE.scantarget")
 				.replace("_ACTOR_NAME_", speaker.name)
 				.replace("_TARGET_NAME_", target.name);
-			renderTemplate(
+			foundry.applications.handlebars.renderTemplate(
 				"systems/fathomlessgears/templates/messages/message-outline.html",
 				{
 					heading: "Scan",
@@ -146,7 +146,7 @@ export class HUDActionCollection {
 
 	textAction(speaker, actionCode) {
 		const actionRecord = actionText[actionCode];
-		renderTemplate(
+		foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/message-outline.html",
 			{
 				heading: actionRecord.name,
@@ -166,7 +166,7 @@ export class HUDActionCollection {
 		const resupply = 10;
 		const total = spacesCost + repairCost + resupply;
 
-		renderTemplate(
+		foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/repair-costs.html",
 			{
 				heading: game.i18n

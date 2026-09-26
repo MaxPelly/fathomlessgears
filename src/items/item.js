@@ -169,7 +169,7 @@ export class HLMItem extends Item {
 	}
 
 	async postFrameMessage(actor) {
-		const displayMessage = await renderTemplate(
+		const displayMessage = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/frame-ability.html",
 			{
 				frame_ability_name: this.system.gear_ability_name,
@@ -188,7 +188,7 @@ export class HLMItem extends Item {
 	}
 
 	async postFlatItem(actor) {
-		let displayString = await renderTemplate(
+		let displayString = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/internal.html",
 			{
 				internal: this,
@@ -214,7 +214,7 @@ export class HLMItem extends Item {
 					newTag.rollspecs = JSON.stringify(newTag.system.roll);
 					tagsCopy.push(newTag);
 				});
-				let tagButtonHtml = await renderTemplate(
+				let tagButtonHtml = await foundry.applications.handlebars.renderTemplate(
 					"systems/fathomlessgears/templates/partials/tag-buttons.html",
 					{
 						tags: tagsCopy

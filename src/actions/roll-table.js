@@ -90,7 +90,7 @@ export class RollTableHandler {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
 		const itemReference = `@UUID[${item.uuid}]{${item.name}}`;
 
-		const message = await renderTemplate(
+		const message = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/history-table-roll-message.html",
 			{
 				rollTitle: label,
@@ -106,7 +106,7 @@ export class RollTableHandler {
 	async getRenderedMeltdown(roll, result) {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
 
-		const message = await renderTemplate(
+		const message = await foundry.applications.handlebars.renderTemplate(
 			"systems/fathomlessgears/templates/messages/meltdown-table-roll-message.html",
 			{
 				title: "Meltdown",
