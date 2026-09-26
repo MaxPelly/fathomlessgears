@@ -218,7 +218,7 @@ export class HLMActorSheet extends ActorSheet {
 		);
 		html.find(".maneuver-checkbox").click(this.toggleManeuver.bind(this));
 		if (this.actor.getFlag("fathomlessgears", "interactiveGrid")) {
-			html = this.actor.grid.activateListeners(html);
+			this.actor.grid.activateListeners(html[0]);
 		}
 		if (this.actor.type === ACTOR_TYPES.fisher) {
 			html.find(".meltdown-button").click(this.rollMeltdown.bind(this));

@@ -82,14 +82,22 @@ export class Grid {
 
 	/**
 	 * Activate relevant listeners to a grid display HTML object
-	 * @param {HTML} html The HTML document to add listeners to
-	 * @returns the HTML with listeners(?)
+	 * @param {HTMLElement} root The HTML element to add listeners to
+	 * @returns the element with listeners
 	 */
-	activateListeners(html) {
-		html.find(".grid-space").click(this.clickGridSpace.bind(this));
-		html.find(".grid-space").mouseenter(this._onMouseEnterSpace.bind(this));
-		html.find(".grid-space").mouseleave(this._onMouseLeaveSpace.bind(this));
-		return html;
+	activateListeners(root) {
+		root.querySelectorAll(".grid-space").forEach((space) => {
+			space.addEventListener("click", this.clickGridSpace.bind(this));
+			space.addEventListener(
+				"mouseenter",
+				this._onMouseEnterSpace.bind(this)
+			);
+			space.addEventListener(
+				"mouseleave",
+				this._onMouseLeaveSpace.bind(this)
+			);
+		});
+		return root;
 	}
 
 	/**

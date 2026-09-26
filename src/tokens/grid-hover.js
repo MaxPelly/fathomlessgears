@@ -6,55 +6,64 @@ import {HLMApplication} from "../sheets/application.js";
  * Copy Placeable HUD template
  */
 export class GridHoverHUD extends HLMApplication {
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			id: "grid-hover-hud",
-			classes: ["grid-hover-hud", "popout"],
+	static DEFAULT_OPTIONS = {
+		id: "grid-hover-hud",
+		classes: ["grid-hover-hud", "popout"],
+		window: {
+			frame: false,
+			positioned: false,
 			minimizable: false,
-			resizable: false,
-			popOut: false,
-			width: 500,
-			height: 380,
+			resizable: false
+		}
+	};
+
+	static PARTS = {
+		main: {
 			template:
 				"systems/fathomlessgears/templates/grid-hover-template.html"
-		});
-	}
+		}
+	};
 
-	getData() {
-		const data = super.getData();
-		const actor = this.object;
-		if (!actor) return;
+	actor;
+
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
+		const actor = this.actor;
+		if (!actor) return context;
 		let grid = actor.grid;
 
-		data.grid = grid;
-		data.lockPrompt = this.getLockPrompt();
-		data.interactive = actor.testUserPermission(
+		context.grid = grid;
+		context.lockPrompt = this.getLockPrompt();
+		context.interactive = actor.testUserPermission(
 			game.user,
 			CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
 		);
-		data.position = game.settings.get("fathomlessgears", "gridHUDPosition");
+		context.position = game.settings.get(
+			"fathomlessgears",
+			"gridHUDPosition"
+		);
 
 		if (actor.type == ACTOR_TYPES.fish) {
 			const hp = grid.calculateHP();
 			const tranq = Math.min(actor.getConditionValue("tranq"), 3);
 			const catchCounters = actor.getConditionValue("catchcounter");
 			const effectiveHP = Math.max(hp - tranq - catchCounters, 0);
-			data.hp = `${game.i18n.localize("GRID.remainingHP")}: ${effectiveHP}`;
-			data.hpBreakdown = `(${hp} HP`;
+			context.hp = `${game.i18n.localize("GRID.remainingHP")}: ${effectiveHP}`;
+			context.hpBreakdown = `(${hp} HP`;
 			if (tranq) {
-				data.hpBreakdown = data.hpBreakdown.concat(
+				context.hpBreakdown = context.hpBreakdown.concat(
 					` - ${tranq} ${game.i18n.localize("CONDITIONS.tranq")}`
 				);
 			}
 			if (catchCounters) {
-				data.hpBreakdown = data.hpBreakdown.concat(
+				context.hpBreakdown = context.hpBreakdown.concat(
 					` - ${catchCounters} ${game.i18n.localize("CONDITIONS.catchcounter")}`
 				);
 			}
-			data.hpBreakdown = data.hpBreakdown.concat(")");
+			context.hpBreakdown = context.hpBreakdown.concat(")");
 		}
 
-		return data;
+		return context;
 	}
 
 	/**
@@ -78,12 +87,9 @@ export class GridHoverHUD extends HLMApplication {
 		}, 0);
 	}
 
-	/**
-	 * Activates listeners for the grid object
-	 * @param {HTML} html The HTML document
-	 */
-	activateListeners(html) {
-		this.object.grid.activateListeners(html);
+	_onRender(context, options) {
+		super._onRender(context, options);
+		this.actor?.grid.activateListeners(this.element);
 	}
 
 	/**
@@ -91,11 +97,11 @@ export class GridHoverHUD extends HLMApplication {
 	 * @param {HLMActor} actor The actor being hovered (fom token or sidebar)
 	 */
 	assignActor(actor) {
-		this.object = actor;
-		if (this.closing) {
+		this.actor = actor;
+		if (this.state === this.constructor.RENDER_STATES.CLOSING) {
 			this.awaitingRefresh = true;
 		} else {
-			this.render(true);
+			this.render({force: true});
 		}
 	}
 
@@ -103,10 +109,10 @@ export class GridHoverHUD extends HLMApplication {
 	 * Removes the token grid HUD
 	 */
 	clear() {
-		this.object = null;
+		this.actor = null;
 		this.close().then(() => {
-			if (this.awaitingRefresh && this.object) {
-				this.render(true);
+			if (this.awaitingRefresh && this.actor) {
+				this.render({force: true});
 			}
 		});
 	}
@@ -184,7 +190,12 @@ export class GridHoverHUD extends HLMApplication {
 		Hooks.on("deleteToken", () => clearGrid());
 		Hooks.on("closeActorSheet", () => clearGrid());
 		Hooks.on("closeSettingsConfig", () => clearGrid());
+		// HLMItemSheet is still ApplicationV1 until a later migration chunk, so the V1
+		// base-class hook is still needed for it; every app converted to ApplicationV2 in
+		// this chunk (dialogs, FshManager, FileUploader) needs the V2 base-class hook
+		// instead.
 		Hooks.on("closeApplication", () => clearGrid());
+		Hooks.on("closeApplicationV2", () => clearGrid());
 
 		Hooks.on("updateActor", (...args) => refreshGrid(...args));
 		Hooks.on("updateActiveEffect", (condition) =>
@@ -215,7 +226,7 @@ export class GridHoverHUD extends HLMApplication {
 
 	refresh() {
 		if (this.rendered) {
-			refreshGrid(this.object);
+			refreshGrid(this.actor);
 		}
 	}
 }
@@ -236,9 +247,9 @@ function clearGrid() {
  * @param {HLMActor} actor The actor that has been updated
  */
 function refreshGrid(actor) {
-	if (game.gridHover?.rendered && game.gridHover.object._id == actor.id) {
+	if (game.gridHover?.rendered && game.gridHover.actor._id == actor.id) {
 		setTimeout(() => {
-			game.gridHover.render(true);
+			game.gridHover.render({force: true});
 		}, 20);
 	}
 }
