@@ -285,6 +285,10 @@
 					height: 100%;
 				}
 
+				& .tab:not(.active) {
+					display: none;
+				}
+
 				& .tab.active {
 					/*This restricts the tab height to allow for scrolling*/
 					height: 100%;

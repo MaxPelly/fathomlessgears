@@ -1,4 +1,3 @@
-<form class="flexcol {{cssClass}} fisher" autocomplete="off">
 	{{!-- Sheet Header --}}
 	<header class="sheet-header">
 		<h1 class="charname flex-row">
@@ -15,7 +14,7 @@
                 type="number"
                 name="system.fisher_history.el"
             />
-            <div id="import-button" class="btn import-button">{{localize "SHEET.initgearwright"}}</div>
+            <div id="import-button" class="btn import-button" data-action="import">{{localize "SHEET.initgearwright"}}</div>
         </h1>
 	</header>
     <div class="sheet-contents flex-row">
@@ -35,15 +34,15 @@
         }}
         <div class="sheet-data">
             <nav class="sheet-tabs flex-row">
-                <a data-tab="gear">{{localize "TABS.gear"}}</a>
-                <a data-tab="character">{{localize "TABS.downtime"}}</a>
+                <a data-action="switchTab" data-tab="gear" class="{{#ifcond activeTab "==" "gear"}}active{{/ifcond}}">{{localize "TABS.gear"}}</a>
+                <a data-action="switchTab" data-tab="character" class="{{#ifcond activeTab "==" "character"}}active{{/ifcond}}">{{localize "TABS.downtime"}}</a>
             </nav>
 
             <section class="sheet-body">
                 <!---------------------------------------------------
                         CHARACTER TAB
                 ---------------------------------------------------->
-                <div class="tab" data-tab="character">
+                <div class="tab {{#ifcond activeTab "==" "character"}}active{{/ifcond}}" data-tab="character">
                     <div class="tab-content flex-row">
                         <div class="col">
                             <div class="flex-row">
@@ -51,6 +50,7 @@
                                     <img
                                         src="{{actor.system.pilot_portrait}}"
                                         data-edit="system.pilot_portrait"
+                                        data-action="editImage"
                                         title="{{actor.system.pilot-name}}"
                                     />
                                 </div>
@@ -124,7 +124,7 @@
                 <!---------------------------------------------------
                         GEAR TAB
                 ---------------------------------------------------->
-                <div class="tab" data-tab="gear">
+                <div class="tab {{#ifcond activeTab "==" "gear"}}active{{/ifcond}}" data-tab="gear">
                     <div class="tab-content">
                         <div class="flex-row">
                             <div class="flex-col gear-col">
@@ -139,6 +139,7 @@
                                     class="profile-img"
                                     src="{{actor.img}}"
                                     data-edit="img"
+                                    data-action="editImage"
                                     title="{{actor.name}}"
                                     max-height="200"
                                     width="130"
@@ -148,12 +149,12 @@
                                     <div class="frame-ability">
                                         <div class="flex-row frame-ability-row">
                                             <h3 class="frame-ability-name">{{frame.system.gear_ability_name}}</h3>
-                                            <div class="btn post-message" id="post-frame-ability">{{localize "SHEET.post"}}</div>
+                                            <div class="btn post-message" id="post-frame-ability" data-action="postFrameAbility">{{localize "SHEET.post"}}</div>
                                         </div>
                                         <p class="frame-ability-text format-me">{{frame.system.gear_ability}}</p>
                                     </div>
                                 </div>
-                                <div class="btn repairs-button">{{localize "SHEET.calculateRepairs"}}</div>
+                                <div class="btn repairs-button" data-action="repairs">{{localize "SHEET.calculateRepairs"}}</div>
                             </div>
                             <div class="flex-col">
                                 {{#if interactiveGrid}}
@@ -167,6 +168,7 @@
                                     id="grid-img"
                                     src="{{actor.system.grid}}"
                                     data-edit="system.grid"
+                                    data-action="editImage"
                                     title="{{actor.name}}"
                                     max-height="350"
                                     width="350"
@@ -215,9 +217,9 @@
                                 <div class="spacer"></div>
                                 {{#if encore}}
                                     <p class="activated-text font-12">{{ encore.name }}</p>
-                                    <input class="inline-checkbox maneuver-checkbox" type="checkbox" data-selector="activated" data-id="id{{encore.id}}" {{checked encore.activated}}>
+                                    <input class="inline-checkbox maneuver-checkbox" type="checkbox" data-action="toggleManeuver" data-selector="activated" data-id="id{{encore.id}}" {{checked encore.activated}}>
                                 {{/if}}
-                                <button class="btn btn-primary reset-button sheet-row-button">{{localize "SHEET.reset"}}</button>
+                                <button class="btn btn-primary reset-button sheet-row-button" type="button" data-action="resetManeuvers">{{localize "SHEET.reset"}}</button>
                             </div>
                             <div class="internal-category flex-row">
                                 {{#each maneuvers}}
@@ -246,5 +248,3 @@
             </section>
         </div>
     </div>
-
-</form>

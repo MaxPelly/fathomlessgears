@@ -104,18 +104,18 @@
     <hr class="divider primary">
     <hr class="divider primary">
     <div class="sidebar-roll-table-holder">
-        <div class="btn sidebar-roll-table-button hit-location-button">{{localize "SHEET.hitLocation"}}</div>
+        <div class="btn sidebar-roll-table-button hit-location-button" data-action="hitLocation">{{localize "SHEET.hitLocation"}}</div>
     </div>
     <div class="sidebar-roll-table-holder">
-        <div class="btn sidebar-roll-table-button meltdown-button">{{localize "SHEET.meltdown"}}</div>
+        <div class="btn sidebar-roll-table-button meltdown-button" data-action="meltdown">{{localize "SHEET.meltdown"}}</div>
     </div>
     {{/ifcond}}
     {{#ifcond actor.type "==" 'fish'}}
     <div class="sidebar-roll-table-holder">
-        <div class="btn sidebar-roll-table-button hit-location-button">{{localize "SHEET.hitLocation"}}</div>
+        <div class="btn sidebar-roll-table-button hit-location-button" data-action="hitLocation">{{localize "SHEET.hitLocation"}}</div>
     </div>
     <div class="sidebar-roll-table-holder">
-        <div class="btn sidebar-roll-table-button meltdown-button" id="scan">{{scan_text}}</div>
+        <div class="btn sidebar-roll-table-button meltdown-button" id="scan" data-action="scan">{{scan_text}}</div>
     </div>
     {{/ifcond}}
 </div>

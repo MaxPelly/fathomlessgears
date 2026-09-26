@@ -188,13 +188,12 @@ export class GridHoverHUD extends HLMApplication {
 
 		Hooks.on("preUpdateToken", () => clearGrid());
 		Hooks.on("deleteToken", () => clearGrid());
-		Hooks.on("closeActorSheet", () => clearGrid());
 		Hooks.on("closeSettingsConfig", () => clearGrid());
-		// HLMItemSheet is still ApplicationV1 until a later migration chunk, so the V1
-		// base-class hook is still needed for it; every app converted to ApplicationV2 in
-		// this chunk (dialogs, FshManager, FileUploader) needs the V2 base-class hook
-		// instead.
-		Hooks.on("closeApplication", () => clearGrid());
+		// Every application in this system is now ApplicationV2 (HLMActorSheet/
+		// HLMItemSheet converted in a later chunk than the one that added this hook), so
+		// the V1 base-class hook (closeApplication) and the ActorSheet-specific V1 hook
+		// (closeActorSheet) are both dead code - closeApplicationV2 alone now covers every
+		// app in the system.
 		Hooks.on("closeApplicationV2", () => clearGrid());
 
 		Hooks.on("updateActor", (...args) => refreshGrid(...args));

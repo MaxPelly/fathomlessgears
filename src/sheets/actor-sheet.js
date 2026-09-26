@@ -5,40 +5,65 @@ import {populateActorFromGearwright} from "../actors/gearwright-actor.js";
 import {NarrativeRollDialog} from "../dialogs/narrative-dialog.js";
 
 /**
- * @extends {ActorSheet}
+ * @extends {foundry.applications.sheets.ActorSheetV2}
  */
-export class HLMActorSheet extends ActorSheet {
-	constructor(...args) {
-		super(...args);
+export class HLMActorSheet extends foundry.applications.api.HandlebarsApplicationMixin(
+	foundry.applications.sheets.ActorSheetV2
+) {
+	static DEFAULT_OPTIONS = {
+		classes: ["fathomlessgears", "sheet", "actor"],
+		position: {width: 750, height: 650},
+		form: {submitOnChange: true},
+		dragDrop: [{dragSelector: ".item-list .item", dropSelector: null}],
+		actions: {
+			roll: HLMActorSheet.#onRoll,
+			breakInternal: HLMActorSheet.#onBreakInternal,
+			postItem: HLMActorSheet.#onPostItem,
+			resetManeuvers: HLMActorSheet.#onResetManeuvers,
+			hitLocation: HLMActorSheet.#onLocationHitMessage,
+			scan: HLMActorSheet.#onToggleScan,
+			import: HLMActorSheet.#onSelectImport,
+			manualSetup: HLMActorSheet.#onSelectManualSetup,
+			toggleManeuver: HLMActorSheet.#onToggleManeuver,
+			meltdown: HLMActorSheet.#onRollMeltdown,
+			postFrameAbility: HLMActorSheet.#onPostFrameAbility,
+			toggleInjury: HLMActorSheet.#onToggleInjuryHealed,
+			narrative: HLMActorSheet.#onRollNarrativeCheck,
+			editHistory: HLMActorSheet.#onTriggerHistoryEdit,
+			historyUp: HLMActorSheet.#onHistoryItemUp,
+			historyDown: HLMActorSheet.#onHistoryItemDown,
+			historyDelete: HLMActorSheet.#onHistoryDelete,
+			injury: HLMActorSheet.#onRollInjury,
+			touch: HLMActorSheet.#onRollTouch,
+			repairs: HLMActorSheet.#onCalculateRepairs,
+			switchTab: HLMActorSheet.#onSwitchTab
+		}
+	};
+
+	static PARTS = {
+		fisher: {
+			template: "systems/fathomlessgears/templates/fisher-sheet.html"
+		},
+		fish: {template: "systems/fathomlessgears/templates/fish-sheet.html"}
+	};
+
+	editingHistory = false;
+	activeTab = "gear";
+
+	_configureRenderParts(options) {
+		const parts = super._configureRenderParts(options);
+		const key = this.actor.type === ACTOR_TYPES.fish ? "fish" : "fisher";
+		return {[key]: parts[key]};
+	}
+
+	_onClose(options) {
+		super._onClose(options);
 		this.editingHistory = false;
 	}
 
-	close(...args) {
-		this.editingHistory = false;
-		super.close(...args);
-	}
-
 	/** @inheritdoc */
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears", "sheet", "actor"],
-			template: "systems/fathomlessgears/templates/fisher-sheet.html",
-			width: 750,
-			height: 650,
-			tabs: [
-				{
-					navSelector: ".sheet-tabs",
-					contentSelector: ".sheet-body",
-					initial: "gear"
-				}
-			],
-			dragDrop: [{dragSelector: ".item-list .item", dropSelector: null}]
-		});
-	}
-
-	/** @inheritdoc */
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.showCover =
 			!context.actor.getFlag("fathomlessgears", "initialised") ||
 			this.loading;
@@ -46,6 +71,8 @@ export class HLMActorSheet extends ActorSheet {
 			"fathomlessgears",
 			"initialised"
 		);
+		context.owner = this.document.isOwner;
+		context.editable = this.isEditable;
 		context.biographyHTML =
 			await foundry.applications.ux.TextEditor.implementation.enrichHTML(
 				context.actor.system.biography,
@@ -114,6 +141,7 @@ export class HLMActorSheet extends ActorSheet {
 			context.history = this.buildHistoryForDisplay(items);
 			context.labels = this.actor.system.downtime.labels;
 			context.editingHistory = this.editingHistory;
+			context.activeTab = this.activeTab;
 		}
 
 		//Other items
@@ -146,40 +174,45 @@ export class HLMActorSheet extends ActorSheet {
 		return context;
 	}
 
-	/**@inheritdoc */
-	_getSubmitData(updateData) {
-		let formData = super._getSubmitData(updateData);
-		let rerender = false;
+	/**
+	 * Sanitize the submitted custom-attribute-modifier fields, forcing invalid values back
+	 * to 0 rather than letting them reach the actor as e.g. an empty string.
+	 * @inheritdoc
+	 */
+	_prepareSubmitData(event, form, formData, updateData) {
+		const result = super._prepareSubmitData(
+			event,
+			form,
+			formData,
+			updateData
+		);
 		Object.values(ATTRIBUTES).forEach((attribute) => {
 			const reference = `system.attributes.${attribute}.values.custom`;
-			const formVal = formData[reference];
+			const formVal = foundry.utils.getProperty(result, reference);
 			if (!Number.isInteger(formVal)) {
-				formData[reference] = 0;
-				rerender = true;
+				foundry.utils.setProperty(result, reference, 0);
 			}
 		});
-		this.actor.calculateBallast();
-		this.actor.calculateAttributeTotals();
-		if (rerender) {
-			this.render();
-		}
-		return formData;
+		return result;
 	}
 
 	/** @inheritdoc */
-	activateListeners(html) {
+	_onRender(context, options) {
+		super._onRender(context, options);
+
 		//Add classes to attribute boxes with special properties
 		Object.keys(this.actor.system.attributes).forEach((key) => {
 			if (Utils.isRollableAttribute(key)) {
-				let attributeDocument = html
-					.find(`#${key}`)
-					.find(".name-box")[0];
+				const attributeDocument = this.element
+					.querySelector(`#${key}`)
+					.querySelector(".name-box");
 				attributeDocument.classList.add(
 					"attribute-button",
 					"rollable",
 					"btn"
 				);
-				if (this.type == ACTOR_TYPES.fish) {
+				attributeDocument.dataset.action = "roll";
+				if (this.actor.type == ACTOR_TYPES.fish) {
 					attributeDocument.classList.add("btn-dark");
 				}
 			}
@@ -192,70 +225,44 @@ export class HLMActorSheet extends ActorSheet {
 				CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
 			)
 		) {
-			Utils.activateButtons(html[0]);
-			// html.find(".card-body").each(function () {
-			// 	this.classList.add("interactable");
-			// });
-			html.find(".grid-base").each(function () {
-				this.classList.add("interactable");
+			Utils.activateButtons(this.element);
+			this.element.querySelectorAll(".grid-base").forEach((el) => {
+				el.classList.add("interactable");
 			});
 		}
 
-		super.activateListeners(html);
-		html.find(".rollable").click(this._onRoll.bind(this));
-		html.find(".break-button").click(this.breakInternal.bind(this));
-		html.find(".post-button").click(this.postItem.bind(this));
-		//html.find(".delete-item").click(this.deleteItem.bind(this));
-		html.find(".reset-button").click(this.resetManeuvers.bind(this));
-		html.find(".hit-location-button").click(
-			this.locationHitMessage.bind(this)
-		);
-		html.find("#scan").click(this.toggleScan.bind(this));
-		html.find("#initialise-import").click(this.selectImport.bind(this));
-		html.find("#import-button").click(this.selectImport.bind(this));
-		html.find("#initialise-manual").click(
-			this.selectManualSetup.bind(this)
-		);
-		html.find(".maneuver-checkbox").click(this.toggleManeuver.bind(this));
 		if (this.actor.getFlag("fathomlessgears", "interactiveGrid")) {
-			this.actor.grid.activateListeners(html[0]);
-		}
-		if (this.actor.type === ACTOR_TYPES.fisher) {
-			html.find(".meltdown-button").click(this.rollMeltdown.bind(this));
-			document
-				.getElementById("post-frame-ability")
-				.addEventListener("click", this.postFrameAbility.bind(this));
-			html.find(".history-table-row").on(
-				"dragover",
-				this.dragOverHistoryTable.bind(this)
-			);
-			html.find(".history-table-row").on(
-				"dragleave",
-				this.dragLeaveHistoryTable.bind(this)
-			);
-			html.find(".injury-checkbox").click(
-				this.toggleInjuryHealed.bind(this)
-			);
-			html.find(".narrative-btn").click(
-				this.rollNarrativeCheck.bind(this)
-			);
-			html.find(".history-edit-btn").click(
-				this.triggerHistoryEdit.bind(this)
-			);
-			html.find(".history-arrow-up").click(this.historyItemUp.bind(this));
-			html.find(".history-arrow-down").click(
-				this.historyItemDown.bind(this)
-			);
-			html.find(".history-delete").click(this.historyDelete.bind(this));
-			html.find(".injury-button").click(this.rollInjury.bind(this));
-			html.find(".touch-button").click(this.rollTouch.bind(this));
-			html.find(".repairs-button").click(
-				this.calculateRepairs.bind(this)
-			);
+			this.actor.grid.activateListeners(this.element);
 		}
 
-		game.tagHandler.transformTagNameToButton(this.element[0]);
-		game.tagHandler.addListeners(this.element[0]);
+		if (this.actor.type === ACTOR_TYPES.fisher) {
+			this.element
+				.querySelectorAll(".history-table-row")
+				.forEach((row) => {
+					row.addEventListener(
+						"dragover",
+						this.dragOverHistoryTable.bind(this)
+					);
+					row.addEventListener(
+						"dragleave",
+						this.dragLeaveHistoryTable.bind(this)
+					);
+				});
+			this._syncActiveTab();
+		}
+
+		game.tagHandler.transformTagNameToButton(this.element);
+		game.tagHandler.addListeners(this.element);
+	}
+
+	/**
+	 * Restore the current tab selection across re-renders (the framework doesn't persist
+	 * this itself since tab switching here is hand-rolled - see `#onSwitchTab`).
+	 */
+	_syncActiveTab() {
+		this.element.querySelectorAll("[data-tab]").forEach((el) => {
+			el.classList.toggle("active", el.dataset.tab === this.activeTab);
+		});
 	}
 
 	buildHistoryForDisplay(items) {
@@ -294,43 +301,38 @@ export class HLMActorSheet extends ActorSheet {
 		}
 	}
 
-	async _onRoll(event) {
+	static #onRoll(event, target) {
 		event.preventDefault();
 		if (!this.testOwnership()) {
 			return false;
 		}
-		const attribute = event.target.attributes.attribute?.value;
+		const attribute = target.getAttribute("attribute");
 		game.rollHandler.startRollDialog(this.actor, attribute);
-	}
-
-	/** @override */
-	get template() {
-		return `systems/fathomlessgears/templates/${this.actor.type}-sheet.html`;
 	}
 
 	/**
 	 * Accept and process an item dropped on this sheet
 	 * @param {DragEvent} event The initiating drag event
-	 * @param {*} data What's being dropped
+	 * @param {documents.Item} item The dropped Item document
 	 */
-	async _onDropItem(event, data) {
+	async _onDropItem(event, item) {
 		if (!this.testOwnership()) {
-			return false;
+			return null;
 		}
-		const targetItem = await fromUuid(data.uuid);
-		if (this.actor.itemsManager.canDropItem(targetItem)) {
-			this.actor.itemsManager.receiveDrop(targetItem, event);
+		if (this.actor.itemsManager.canDropItem(item)) {
+			this.actor.itemsManager.receiveDrop(item, event);
 		} else {
 			ui.notifications.info(
-				`Can't drop item type ${targetItem.type} on actor type ${this.actor.type}`
+				`Can't drop item type ${item.type} on actor type ${this.actor.type}`
 			);
 		}
+		return null;
 	}
 
 	/**
 	 * Share the actor's frame ability
 	 */
-	postFrameAbility() {
+	static #onPostFrameAbility() {
 		if (!this.testOwnership()) {
 			return false;
 		}
@@ -339,39 +341,36 @@ export class HLMActorSheet extends ActorSheet {
 
 	/**
 	 * Mark an internal as broken/repaired
-	 * @param {event} event The triggering event
 	 */
-	async breakInternal(event) {
+	static async #onBreakInternal(_event, target) {
 		if (!this.testOwnership()) {
 			return false;
 		}
 		this.actor.itemsManager.toggleInternalBroken(
-			safeIdClean(event.target.dataset.id)
+			safeIdClean(target.dataset.id)
 		);
 	}
 
 	toggleInternalBrokenDisplay(uuid) {
-		document
-			.querySelector(`[data-id=id${uuid}]`, ".card")
+		this.element
+			.querySelector(`[data-id=id${uuid}].card`)
 			.classList.toggle("broken");
-		document
-			.querySelector(`[data-id=id${uuid}]`, ".break-button")
+		this.element
+			.querySelector(`[data-id=id${uuid}].break-button`)
 			.classList.toggle("btn-dark");
-		document
-			.querySelector(`[data-id=id${uuid}]`, ".post-button")
+		this.element
+			.querySelector(`[data-id=id${uuid}].post-button`)
 			.classList.toggle("btn-dark");
 	}
 
-	toggleManeuver(event) {
+	static #onToggleManeuver(_event, target) {
 		if (!this.testOwnership()) {
 			return false;
 		}
-		this.actor.itemsManager.toggleManeuver(
-			safeIdClean(event.target.dataset.id)
-		);
+		this.actor.itemsManager.toggleManeuver(safeIdClean(target.dataset.id));
 	}
 
-	resetManeuvers(_event) {
+	static #onResetManeuvers() {
 		if (!this.testOwnership()) {
 			return false;
 		}
@@ -387,11 +386,11 @@ export class HLMActorSheet extends ActorSheet {
 		});
 	}
 
-	postItem(event) {
+	static #onPostItem(_event, target) {
 		if (!this.testOwnership()) {
 			return false;
 		}
-		this.actor.postItem(safeIdClean(event.target.dataset.id));
+		this.actor.postItem(safeIdClean(target.dataset.id));
 	}
 
 	deleteItem(event) {
@@ -403,28 +402,28 @@ export class HLMActorSheet extends ActorSheet {
 		);
 	}
 
-	locationHitMessage(_event) {
+	static #onLocationHitMessage() {
 		if (!this.testOwnership()) {
 			return false;
 		}
 		this.actor.locationHitMessage();
 	}
 
-	async toggleScan(_event) {
+	static async #onToggleScan() {
 		if (!this.testOwnership()) {
 			return false;
 		}
 		this.actor.toggleScan();
 	}
 
-	selectManualSetup() {
+	static #onSelectManualSetup() {
 		if (!this.testOwnership()) {
 			return false;
 		}
 		this.actor.setFlag("fathomlessgears", "initialised", true);
 	}
 
-	selectImport() {
+	static #onSelectImport() {
 		if (!this.testOwnership()) {
 			return false;
 		}
@@ -444,7 +443,7 @@ export class HLMActorSheet extends ActorSheet {
 			this.loading = false;
 			//Small delay to allow for the sheet to load post updates
 			setTimeout(() => {
-				this.render(true);
+				this.render({force: true});
 			}, 20);
 		});
 	}
@@ -458,20 +457,20 @@ export class HLMActorSheet extends ActorSheet {
 		event.target.parentElement.classList.remove("valid-drop-hover");
 	}
 
-	toggleInjuryHealed(event) {
+	static #onToggleInjuryHealed(_event, target) {
 		if (!this.testOwnership()) {
 			return false;
 		}
 		this.actor.itemsManager.toggleInjuryHealed(
-			safeIdClean(event.target.dataset.id)
+			safeIdClean(target.dataset.id)
 		);
 	}
 
-	rollNarrativeCheck(_event) {
+	static #onRollNarrativeCheck() {
 		new NarrativeRollDialog(this.actor.system.downtime.labels, this.actor);
 	}
 
-	triggerHistoryEdit(event) {
+	static #onTriggerHistoryEdit(event) {
 		if (!this.testOwnership()) {
 			return false;
 		}
@@ -481,9 +480,13 @@ export class HLMActorSheet extends ActorSheet {
 			.classList.toggle("editing");
 	}
 
-	historyItemUp(event) {
-		const button = event.target.closest(".history-cover-button");
-		const item = this.actor.items.get(safeIdClean(button.dataset.id));
+	static #onSwitchTab(_event, target) {
+		this.activeTab = target.dataset.tab;
+		this._syncActiveTab();
+	}
+
+	static #onHistoryItemUp(_event, target) {
+		const item = this.actor.items.get(safeIdClean(target.dataset.id));
 		let el = parseInt(item.system.obtainedAt);
 		if (el > 1) {
 			el = el - 1;
@@ -491,9 +494,8 @@ export class HLMActorSheet extends ActorSheet {
 		item.update({"system.obtainedAt": el.toString()});
 	}
 
-	historyItemDown(event) {
-		const button = event.target.closest(".history-cover-button");
-		const item = this.actor.items.get(safeIdClean(button.dataset.id));
+	static #onHistoryItemDown(_event, target) {
+		const item = this.actor.items.get(safeIdClean(target.dataset.id));
 		let el = parseInt(item.system.obtainedAt);
 		if (el < this.actor.system.fisher_history.el) {
 			el = el + 1;
@@ -501,26 +503,25 @@ export class HLMActorSheet extends ActorSheet {
 		item.update({"system.obtainedAt": el.toString()});
 	}
 
-	historyDelete(event) {
-		const button = event.target.closest(".history-cover-button");
+	static #onHistoryDelete(_event, target) {
 		this.actor.itemsManager.removeItemCallback(
-			safeIdClean(button.dataset.id)
+			safeIdClean(target.dataset.id)
 		);
 	}
 
-	rollInjury(_event) {
+	static #onRollInjury() {
 		game.rollTables.rollInjury(this.actor);
 	}
 
-	rollTouch(_event) {
+	static #onRollTouch() {
 		game.rollTables.rollTouch(this.actor);
 	}
 
-	rollMeltdown(_event) {
+	static #onRollMeltdown() {
 		game.rollTables.rollMeltdown(this.actor);
 	}
 
-	calculateRepairs(_event) {
+	static #onCalculateRepairs() {
 		game.hudActions.calculateRepairCost(this.actor);
 	}
 }

@@ -74,7 +74,7 @@ Hooks.once("init", async function () {
 	foundry.documents.collections.Actors.registerSheet(
 		"fathomlessgears",
 		HLMActorSheet,
-		{makeDefault: true}
+		{types: ["fisher", "fish"], makeDefault: true}
 	);
 
 	foundry.documents.collections.Items.registerSheet(

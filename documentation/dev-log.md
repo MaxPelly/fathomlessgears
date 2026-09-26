@@ -778,3 +778,140 @@ back:
    wrapper would save little while adding a new API surface to maintain.
 
 Re-verified after the fix: `npm run lint` clean, `npx prettier --check` clean.
+
+## Chunk 5: §7 ApplicationV2 steps 7-8 (item/actor sheets) + §8 CSS
+
+**Step 7 - `HLMItemSheet`:** trivial, as the plan predicted - this sheet is still a
+placeholder stub ("Item sheets coming soon"). `HandlebarsApplicationMixin(ItemSheetV2)`,
+`tag: "form"` + `form: {submitOnChange: true}` replacing the template's own `<form>`
+wrapper.
+
+**Step 8 - `HLMActorSheet`:** the largest single file in this migration (529 lines, two
+~130-250 line templates, ~9 partials). Converted whole in one pass since the base class
+change (AppV1 -> AppV2) makes an incremental per-method migration impossible - every
+`activateListeners`/`getData` caller had to move together.
+
+- `static PARTS = {fisher: {...}, fish: {...}}`, filtered down to the one matching
+  `this.actor.type` in `_configureRenderParts` (per the plan). This method isn't
+  independently doc-verifiable - `HandlebarsApplicationMixin`'s own returned class has no
+  TypeDoc page at all (same gap chunk 4 hit for `RENDER_STATES`) - so this relies on
+  established, stable Foundry v12+ system convention, not a confirmed doc reference.
+  Flagged below for a live-client check.
+- `getData` -> `_prepareContext`, `activateListeners(html)` -> `_onRender(context,
+  options)`. `_getSubmitData` -> `_prepareSubmitData` (confirmed signature via docs:
+  `(event, form, formData: FormDataExtended, updateData?)`), rewritten to use
+  `foundry.utils.getProperty`/`setProperty` with the same dotted paths instead of direct
+  bracket access, since `formData` is no longer guaranteed flat like `_getSubmitData`'s
+  old return value was.
+- **Per the plan, removed the direct `calculateBallast()`/`calculateAttributeTotals()`/
+  `this.render()` calls from the submit path.** Confirmed exactly why this was a bug, not
+  just cosmetic: `Actor#prepareDerivedData` already recomputes ballast on every data
+  access (`actor.js:67`), so the manual `calculateBallast()` call was pure waste - but
+  `calculateAttributeTotals(updateSource=true)` (the default) calls `this.update(...)`
+  *internally* (`actor.js:368`), meaning the old submit path triggered a **second, real
+  database update** on top of the form's own submitted update, every single time any field
+  changed. Removing these calls is a real bug fix, not just avoiding a redundant render.
+- ~40 `html.find(...).click(...)` bindings -> the `actions` map the plan names almost
+  verbatim (`roll`, `breakInternal`, `postItem`, `resetManeuvers`, `hitLocation`, `scan`,
+  `import`, `manualSetup`, `toggleManeuver`, `meltdown`, `postFrameAbility`, `toggleInjury`,
+  `narrative`, `editHistory`, `historyUp`, `historyDown`, `historyDelete`, `injury`,
+  `touch`, `repairs`), plus one the plan doesn't mention (`switchTab` - see tabs, below).
+  Handlers that used to read `event.target.dataset.id`/`event.target.closest(...)` now
+  read from the action dispatcher's own `target` parameter directly (confirmed via docs:
+  "the capturing HTML element which defined a `[data-action]`" - i.e. already the correct,
+  closest-matching ancestor), which let several handlers (`historyUp`/`historyDown`/
+  `historyDelete`) drop their manual `.closest(".history-cover-button")` call entirely.
+- **Images (`data-edit="img"`/`system.pilot_portrait`/`system.grid`):** added
+  `data-action="editImage"` alongside the existing `data-edit`. Confirmed via docs, not
+  guessed - `DocumentSheetV2`'s own `DEFAULT_OPTIONS.actions` already includes a built-in
+  `editImage: (event, target) => void|Promise<void>` handler, inherited automatically; no
+  code needed on this class's side beyond the template attribute.
+- **Biography editor: plan predicted a change here that real docs show is unnecessary.**
+  The plan said `{{editor}}` needs replacing with a raw `<prose-mirror>` element. Checked
+  the live v14 docs' `foundry.applications.handlebars.editor` function page directly: the
+  `editor` Handlebars helper still exists in v14, with the exact same signature
+  (`content, {button, class, collaborate, editable, engine, target}`) already used in
+  `fisher-sheet.html` unchanged. Left this template call exactly as-is - a clean example of
+  why checking the plan's own prose against real docs matters even late in a migration.
+- **Tabs: deliberately did NOT use `ActionsV2`/`static TABS`'s built-in tab machinery,**
+  despite the plan suggesting `static TABS = {primary: {tabs: [...], initial: "gear"}}`.
+  Reasoning: the exact wiring convention (`data-group`/`data-tab`/whether `data-action:
+  "tab"` is a framework-reserved action name) isn't in TypeDoc at all - it's exactly the
+  class of thing the migration reference doc flags as unconfirmable this way (compiled
+  template/DOM behaviour, not a JS signature) - and getting it wrong would be a severe,
+  instantly-visible failure (no tab content would ever be reachable). Checked this
+  system's own CSS first and found **no** `.tab:not(.active) {display:none}` rule
+  anywhere - meaning tab visibility already depended on some hide/show mechanism this
+  system's own stylesheets don't define, so relying on an unconfirmed *framework*
+  mechanism to fill that gap felt too risky to ship blind. Implemented a small, fully
+  self-contained hand-rolled tab switcher instead: `switchTab` action stores
+  `this.activeTab` on the sheet instance, toggles `.active` on every `[data-tab]` element
+  via `_syncActiveTab()` (called from `_onRender` so it survives re-renders), and a new
+  `.tab:not(.active) {display:none}` CSS rule (§8, `sheet.css`) makes that toggle actually
+  hide content - the exact same effect `static TABS` would have provided, but entirely
+  driven by code in this diff rather than an unverified core mechanism. Fish sheets have
+  no tab markup at all, so this is inert for them.
+- **Real bug found and fixed while doing the required `document`/`querySelector`
+  conversion:** `toggleInternalBrokenDisplay` called `document.querySelector(selector,
+  ".card")` - a **second argument `querySelector` doesn't accept at all** (silently
+  ignored by the real DOM API). Since `.card`/`.break-button`/`.post-button` all carry the
+  *same* `data-id` on a given internal (per `internal-partial.html`), the single-argument
+  selector `[data-id=id${uuid}]` always matched the outermost `.card` element first,
+  regardless of which of the three lines was "supposed" to target the break/post buttons -
+  so 2 of these 3 lines were toggling the wrong element's classes the entire time. Since
+  converting to `this.element.querySelector(...)` requires collapsing to one valid
+  selector regardless, wrote the combined selectors that actually match driver intent
+  (`` `[data-id=id${uuid}].card` ``, `` `[data-id=id${uuid}].break-button` ``, etc.) - this
+  isn't a judgment call the way the narrative-dialog/string_id bugs were; there's no valid
+  way to "faithfully preserve" a bug caused by passing a nonexistent argument to a real Web
+  API.
+- **Second bug found and fixed the same way:** `if (this.type == ACTOR_TYPES.fish)` inside
+  the rollable-attribute-styling loop - `this.type` doesn't exist on an ActorSheet
+  (V1 or V2); every other reference to the actor's type in this same file correctly says
+  `this.actor.type`. Since `this.type` is always `undefined`, this branch (adding
+  `btn-dark` to fish attribute buttons) has never actually run. Fixed to `this.actor.type`
+  while rewriting this exact loop for the `_onRender` conversion anyway.
+- **`gearwright-actor.js`:** replaced both `document.querySelector("#HLMActorSheet-Actor-
+  ${actor._id}")` calls (fragile - depended on AppV1's own default element-id naming
+  convention, which V2 may not reproduce identically) with `actor.sheet?.element?.classList`,
+  per the plan.
+- **Sheet registration:** `foundry.documents.collections.Actors.registerSheet(...)` now
+  passes `{types: ["fisher", "fish"], makeDefault: true}` (previously no `types` filter -
+  harmless before since this was the only registered Actor sheet anyway, but now explicit
+  per the plan).
+- **`grid-hover.js` hook cleanup:** with both `HLMActorSheet` and `HLMItemSheet` now
+  ApplicationV2, there is no V1 application left anywhere in this codebase. Removed the
+  now-permanently-dead `closeApplication` (V1 base hook) and `closeActorSheet`
+  (ActorSheet-specific V1 hook) registrations chunk 4 had deliberately kept for exactly
+  this not-yet-converted case; `closeApplicationV2` alone now covers every app in the
+  system. `closeSettingsConfig` is untouched (core Foundry's own app, unrelated to this
+  system's V1/V2 status).
+- **§8 CSS:** added the `.tab:not(.active) {display:none}` rule described above
+  (`sheet.css`, next to the pre-existing `.tab.active {height:100%}` rule). No other CSS
+  changes were needed for this chunk specifically - the rest of §8 (core CSS variable
+  migration, `@layer` interactions, Font Awesome 7 icons, dark theme) is unrelated to the
+  sheet conversion and remains open for a dedicated pass.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, full `src/`
+`.mjs`-copy syntax sweep clean, every touched template (both sheets + all 9 modified
+partials) precompiled without error via a temporary, unsaved `npm install handlebars`.
+
+**Still needs, per §12 and the doc-verification gaps above (this is the single riskiest
+chunk in the whole migration to skip live-testing):**
+- The hand-rolled tab switcher's actual visual behaviour (gear/character tabs show/hide
+  correctly, survive re-render, default to "gear").
+- `_configureRenderParts` is the correct hook name for per-instance PARTS filtering
+  (established convention, not TypeDoc-confirmed).
+- Whether dynamically adding `data-action="roll"` to attribute `.name-box` elements inside
+  `_onRender` (rather than baking it into the template) is picked up by the actions
+  dispatcher - this assumes the framework uses one delegated click listener checking
+  `event.target.closest("[data-action]")` at click time (not a one-time scan at initial
+  render), which is standard event-delegation practice but not something TypeDoc's
+  signature-only reference can confirm.
+- The `editImage` built-in action actually opens the FilePicker and updates
+  `img`/`system.pilot_portrait`/`system.grid` correctly for all three image fields.
+- Every action in the ~20-entry map, the drag/drop flow (`_onDropItem` receiving an
+  already-resolved `Item` instead of raw drop data), and the Gearwright import flow
+  (`waiting` class toggling via `actor.sheet?.element`).
+- Existing world actors (fisher and fish) open correctly with data intact after this
+  conversion, per §12's final test-matrix item.

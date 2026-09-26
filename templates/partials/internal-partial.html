@@ -8,7 +8,7 @@
         {{/ifcond}}
         {{#unless popout}}
         {{#unless fixedState}}
-        <div class="btn break-button font-12 {{#if internal.flags.fathomlessgears.broken}}btn-dark{{/if}}" data-id="id{{internal._id}}">
+        <div class="btn break-button font-12 {{#if internal.flags.fathomlessgears.broken}}btn-dark{{/if}}" data-action="breakInternal" data-id="id{{internal._id}}">
             {{#if internal.flags.fathomlessgears.broken}}
             {{localize "SHEET.internalfix"}}
             {{else}}
@@ -16,7 +16,7 @@
             {{/if}}
         </div>
         {{/unless}}
-        <div class="btn btn-primary post-button sheet-row-button {{#if internal.flags.fathomlessgears.broken}}btn-dark{{/if}}" data-id="id{{internal._id}}">{{localize "SHEET.post"}}</div>
+        <div class="btn btn-primary post-button sheet-row-button {{#if internal.flags.fathomlessgears.broken}}btn-dark{{/if}}" data-action="postItem" data-id="id{{internal._id}}">{{localize "SHEET.post"}}</div>
         {{/unless}}
     </div>
     <div class="card-body">

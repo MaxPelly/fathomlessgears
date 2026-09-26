@@ -37,14 +37,14 @@
             {{/each}}
         </table>
         <div class="history-edit-holder">
-            <button class="btn history-edit-btn">
+            <button class="btn history-edit-btn" type="button" data-action="editHistory">
                 <i class="fa-solid fa-pen-to-square history-edit-icon start-editing"></i>
                 <i class="fa-solid fa-xmark history-edit-icon stop-editing"></i>
             </button>
         </div>
     </div>
     <div class="flex-row">
-        <div class="btn injury-button history-roll-button">{{localize "SHEET.rollInjury"}}</div>
-        <div class="btn touch-button history-roll-button">{{localize "SHEET.rollTouch"}}</div>
+        <div class="btn injury-button history-roll-button" data-action="injury">{{localize "SHEET.rollInjury"}}</div>
+        <div class="btn touch-button history-roll-button" data-action="touch">{{localize "SHEET.rollTouch"}}</div>
     </div>
 </div>
