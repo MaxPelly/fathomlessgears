@@ -1,5 +1,6 @@
 import {Utils} from "../utilities/utils.js";
 import {ACTOR_TYPES, ATTRIBUTES, HIT_TYPE, COVER_STATES} from "../constants.js";
+import {renderTemplate} from "../utilities/compat.js";
 
 export class AttackHandler {
 	static async rollToHit(rollParams, defender) {
@@ -109,7 +110,7 @@ export class AttackHandler {
 			formula: attackRoll.formula,
 			total: attackRoll.total
 		};
-		const hitRollDisplay = await foundry.applications.handlebars.renderTemplate(
+		const hitRollDisplay = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/to-hit-partial.html",
 			{
 				modifiers: modifierStack,
@@ -195,7 +196,7 @@ export class AttackHandler {
 			},
 			label: game.i18n.localize("ROLLTEXT.hitColumn")
 		};
-		const result = await foundry.applications.handlebars.renderTemplate(
+		const result = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/location-roll.html",
 			{
 				zoneRoll: zoneRoll,

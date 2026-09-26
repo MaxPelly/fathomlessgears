@@ -7,9 +7,18 @@ order").
 **Testing note:** this environment has no Foundry install, no `npm`/`npx`, and no installed
 `node_modules` (network access to the npm registry works, but there is no npm binary to
 install packages with). Verification in this environment is therefore limited to:
-`node --check` syntax validation, manual code review, and JSON validation. Every chunk
-still needs a real in-Foundry smoke test (§12 test matrix) before merging - this log flags
-what to verify by hand.
+syntax validation, manual code review, and JSON validation. Every chunk still needs a real
+in-Foundry smoke test (§12 test matrix) before merging - this log flags what to verify by
+hand.
+
+**Syntax-check gotcha:** plain `node --check some-file.js` on this repo is **not**
+reliable, because `package.json` has no `"type": "module"` and Node's module-type
+detection for ambiguous `.js` files can silently accept broken syntax (a real example: a
+script-inserted `import` statement landed *inside* another multi-line `import { ... }`
+block across 3 files in this chunk, and `node --check` reported success on all of them).
+The reliable check is to copy the file to a `.mjs` path first (forces ESM parsing; import
+targets aren't resolved by `--check`, so the copy's new location doesn't matter) and check
+that instead. Every commit in this log has been verified this way.
 
 ## Chunk 1: §1 manifest/deps + §3 hard breakages + §4 deprecated globals
 
@@ -152,3 +161,49 @@ what to verify by hand.
   `src/packs/fg_roll_tables/*.json` from a live v13 world, and running `npm run
   lint`/`npm install` (not possible in this sandbox - no npm binary available, though
   network access to the registry does work).
+
+## Chunk 1 code review (findings + fixes)
+
+Ran an independent code-review pass over the three chunk 1 commits. Four issues were
+raised and fixed; a couple of other candidates the review's finder agents raised were
+independently refuted (the "new" native-DOM crash sites they flagged had an identically-
+placed unguarded property access in the old jQuery code, so they aren't regressions -
+same failure point, just a different error message).
+
+1. **Real bug, confirmed and fixed:** `Grid.checkInternal()`
+   (`src/grid/grid-base.js`) calls `this.renderInternal(uuid)` with a single argument,
+   but `renderInternal(event, uuid)` takes two - so `event` is actually the uuid string
+   and `uuid` is `undefined`. This is a pre-existing latent bug (there's no real DOM event
+   available on this call path at all), but the old jQuery `$(event.target)` silently
+   no-opped on the resulting `undefined`, while the new `event.target.closest(...)` threw
+   on it. Fixed by guarding with `event?.target?.closest(...)` and returning `null` early
+   if there's no display element, restoring the original silent-no-op behaviour rather
+   than attempting to fix the deeper pre-existing design issue (out of scope for a
+   migration pass).
+2. **Flagged, left as-is (already documented):** `grid-hover.js`'s
+   `li.directory-item.entry.actor` / `dataset.entryId` selector is unverified against a
+   real v13/v14 client. No code change possible without one; already called out above and
+   in the §12 test matrix as a required manual check before release.
+3. **Real gap, fixed:** the delegated sidebar hover handler only cleared the grid HUD on
+   `mouseleave` of the whole sidebar, not when the pointer moved from an actor row onto a
+   non-actor part of the same sidebar (folder header, search box). The original
+   per-row-`mouseenter`-plus-container-`mouseleave` code had the exact same gap, so this
+   wasn't a regression, but since the delegated handler already tracks entry-id
+   transitions it costs nothing to also clear the HUD state when `actorId` becomes falsy
+   partway through, so this was fixed as a small improvement bundled with the rewrite.
+4. **Real duplication, fixed:** all 24 `renderTemplate`/1 `loadTemplates` call sites had
+   the full `foundry.applications.handlebars.*` path inlined instead of importing from
+   `compat.js`, contradicting that module's own stated purpose ("exactly one place to
+   update"). Added `renderTemplate`/`loadTemplates` re-exports to `compat.js` and switched
+   every call site to import from there.
+
+**Process note for future chunks:** the mechanical find/replace used to rewire those 24
+call sites onto the new import inserted the new `import` line at the position right after
+the *first line* of the previous import statement, which happens to land mid-statement
+when that first import spans multiple lines (`import {\n\tFOO,\n\tBAR\n} from "...";`).
+This broke `roll-handler.js`, `actor.js`, and `grid-base.js`, and - notably -
+`node --check` reported all three as syntactically valid anyway (see the syntax-check
+gotcha note above). Caught by copying to `.mjs` and rechecking after the code review
+flagged the duplication issue that led to touching these files again; fixed by moving the
+misplaced import above the multi-line block it landed inside. A full `.mjs`-based sweep
+of the entire `src/` tree (not just touched files) confirms no other files were affected.

@@ -1,3 +1,5 @@
+import {loadTemplates} from "./compat.js";
+
 /**
  * Handlebars templates preloader
  * @return {Promise}
@@ -38,5 +40,5 @@ export const preloadHandlebarsTemplates = async function () {
 	];
 
 	// Load the template parts
-	return foundry.applications.handlebars.loadTemplates(templatePaths);
+	return loadTemplates(templatePaths);
 };

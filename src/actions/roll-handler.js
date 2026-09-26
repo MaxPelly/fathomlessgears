@@ -1,6 +1,7 @@
 import {RollElement, RollDialog} from "../dialogs/roll-dialog.js";
 import {ReelHandler} from "./reel.js";
 import {constructCollapsibleRollMessage} from "./collapsible-roll.js";
+import {renderTemplate} from "../utilities/compat.js";
 import {
 	ATTRIBUTES,
 	ROLL_MODIFIER_TYPE,
@@ -127,7 +128,7 @@ export class RollHandler {
 			label = label.replace("_ATTRIBUTE_NAME_", roll.formula);
 		}
 
-		const hitRollDisplay = await foundry.applications.handlebars.renderTemplate(
+		const hitRollDisplay = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/labelled-roll-partial.html",
 			{
 				label_left: label,
@@ -167,7 +168,7 @@ export class RollHandler {
 					const actorGrid = await rollParams.actor.items.get(
 						rollParams.actor.system.gridType
 					);
-					const damageText = await foundry.applications.handlebars.renderTemplate(
+					const damageText = await renderTemplate(
 						"systems/fathomlessgears/templates/partials/damage-partial.html",
 						{
 							text: game.i18n.localize("INTERNALS.damage"),
@@ -186,7 +187,7 @@ export class RollHandler {
 					const actorGrid = await rollParams.actor.items.get(
 						rollParams.actor.system.gridType
 					);
-					const damageText = await foundry.applications.handlebars.renderTemplate(
+					const damageText = await renderTemplate(
 						"systems/fathomlessgears/templates/partials/damage-partial.html",
 						{
 							text: game.i18n.localize("INTERNALS.marbles"),
@@ -209,7 +210,7 @@ export class RollHandler {
 			}
 		}
 
-		const messageText = await foundry.applications.handlebars.renderTemplate(
+		const messageText = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/message-outline.html",
 			{
 				heading: heading,
@@ -341,7 +342,7 @@ export class RollHandler {
 		const introductionHtml = `<div class="attack-target">${introductionMessage}</div>`;
 		displayString.push(introductionHtml);
 
-		const diceDisplay = await foundry.applications.handlebars.renderTemplate(
+		const diceDisplay = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/narrative-dice-partial.html",
 			{
 				dice: roll.dice[0],
@@ -350,7 +351,7 @@ export class RollHandler {
 		);
 		displayString.push(diceDisplay);
 
-		const resultDisplay = await foundry.applications.handlebars.renderTemplate(
+		const resultDisplay = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/narrative-result-partial.html",
 			{
 				result: narrativeResult,
@@ -365,7 +366,7 @@ export class RollHandler {
 		displayString.push("</div>");
 		const displayHtml = displayString.join("");
 
-		const messageText = await foundry.applications.handlebars.renderTemplate(
+		const messageText = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/message-outline.html",
 			{
 				body: displayHtml

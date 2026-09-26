@@ -1,5 +1,6 @@
 import {Utils} from "../utilities/utils.js";
 import {AttackHandler} from "../actions/attack.js";
+import {renderTemplate} from "../utilities/compat.js";
 import {
 	ACTOR_TYPES,
 	ATTRIBUTES,
@@ -568,7 +569,7 @@ export class HLMActor extends Actor {
 	async triggerRolledItem(rollParams) {
 		const internal = this.items.get(rollParams.internalId);
 		const rollOutput = await game.rollHandler.rollTargeted(rollParams);
-		let displayString = await foundry.applications.handlebars.renderTemplate(
+		let displayString = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/internal.html",
 			{
 				internal: internal,
@@ -597,7 +598,7 @@ export class HLMActor extends Actor {
 				newTag.rollspecs = JSON.stringify(newTag.system.roll);
 				tagsCopy.push(newTag);
 			});
-			let tagButtonHtml = await foundry.applications.handlebars.renderTemplate(
+			let tagButtonHtml = await renderTemplate(
 				"systems/fathomlessgears/templates/partials/tag-buttons.html",
 				{
 					tags: tagsCopy

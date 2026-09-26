@@ -1,6 +1,6 @@
 import {ITEM_TYPES} from "../constants.js";
 import {constructCollapsibleRollMessage} from "../actions/collapsible-roll.js";
-import {applyMessageMode} from "../utilities/compat.js";
+import {applyMessageMode, renderTemplate} from "../utilities/compat.js";
 
 export const FormatterContext = {
 	message: "message",
@@ -240,7 +240,7 @@ export class MessageHandler {
 		let success = roll.total >= tagRoll.success;
 		let rollSpecs = JSON.stringify(tagRoll);
 
-		let html = await foundry.applications.handlebars.renderTemplate(
+		let html = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/tag-roll.html",
 			{
 				roll: await constructCollapsibleRollMessage(roll),
@@ -302,7 +302,7 @@ export class MessageHandler {
 		fromUuid(event.target.dataset.tagitemid).then((tagData) => {
 			const popout = document.createElement("div");
 			popout.classList.add("tag-popout", "popout", "flex-col");
-			foundry.applications.handlebars.renderTemplate(
+			renderTemplate(
 				"systems/fathomlessgears/templates/partials/tag-tooltip.html",
 				{
 					tag: tagData
@@ -335,7 +335,7 @@ export class MessageHandler {
 				rollSpecs.name = tagData.name;
 				roll = await this.getTagRollDisplay(rollSpecs);
 			}
-			foundry.applications.handlebars.renderTemplate(
+			renderTemplate(
 				"systems/fathomlessgears/templates/messages/tag-message.html",
 				{
 					tag: tagData,

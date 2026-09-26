@@ -259,7 +259,12 @@ export function addGridHudToSidebar(html) {
 		const actorId = actorEntry?.dataset.entryId ?? null;
 		if (actorId === hoveredEntryId) return;
 		hoveredEntryId = actorId;
-		if (!actorId) return;
+		if (!actorId) {
+			game.gridHover.hoveredSidebarActor = null;
+			game.gridHover.hoveringSidebar = false;
+			clearGrid();
+			return;
+		}
 
 		const showOnHover = game.settings.get(
 			"fathomlessgears",

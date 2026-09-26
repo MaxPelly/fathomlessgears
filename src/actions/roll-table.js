@@ -1,5 +1,6 @@
 import {Utils} from "../utilities/utils.js";
 import {constructCollapsibleRollMessage} from "./collapsible-roll.js";
+import {renderTemplate} from "../utilities/compat.js";
 
 export class RollTableHandler {
 	constructor() {
@@ -90,7 +91,7 @@ export class RollTableHandler {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
 		const itemReference = `@UUID[${item.uuid}]{${item.name}}`;
 
-		const message = await foundry.applications.handlebars.renderTemplate(
+		const message = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/history-table-roll-message.html",
 			{
 				rollTitle: label,
@@ -106,7 +107,7 @@ export class RollTableHandler {
 	async getRenderedMeltdown(roll, result) {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
 
-		const message = await foundry.applications.handlebars.renderTemplate(
+		const message = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/meltdown-table-roll-message.html",
 			{
 				title: "Meltdown",

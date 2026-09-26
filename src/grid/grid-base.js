@@ -1,5 +1,6 @@
 import {GridSpace} from "./grid-space.js";
 import {Utils} from "../utilities/utils.js";
+import {renderTemplate} from "../utilities/compat.js";
 import {
 	ACTOR_TYPES,
 	SECTION_REGION_INDICES,
@@ -265,19 +266,19 @@ export class Grid {
 	}
 
 	async renderInternal(event, uuid) {
-		const display = event.target.closest(".grid-display");
+		const display = event?.target?.closest(".grid-display");
+		if (!display) return null;
 		const popout = display.querySelector("#internal-popout");
 		if (popout) {
 			const viewedInternal = this.actor.items.get(uuid);
-			const internalHtml =
-				await foundry.applications.handlebars.renderTemplate(
-					"systems/fathomlessgears/templates/partials/internal-partial.html",
-					{
-						internal: viewedInternal,
-						popout: true,
-						fixedState: true
-					}
-				);
+			const internalHtml = await renderTemplate(
+				"systems/fathomlessgears/templates/partials/internal-partial.html",
+				{
+					internal: viewedInternal,
+					popout: true,
+					fixedState: true
+				}
+			);
 			popout.innerHTML = internalHtml;
 		}
 		return popout;

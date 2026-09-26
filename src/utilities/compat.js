@@ -31,3 +31,15 @@ export function applyMessageMode(messageData) {
 	}
 	return messageData;
 }
+
+/**
+ * Re-export of the namespaced Handlebars helpers (see §0.2) so every call site imports
+ * from this one module instead of spelling out `foundry.applications.handlebars.*`.
+ */
+export function renderTemplate(...args) {
+	return foundry.applications.handlebars.renderTemplate(...args);
+}
+
+export function loadTemplates(...args) {
+	return foundry.applications.handlebars.loadTemplates(...args);
+}

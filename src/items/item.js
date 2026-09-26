@@ -1,6 +1,7 @@
 import {ITEM_TYPES, ATTRIBUTES, ATTRIBUTE_KEY_MAP} from "../constants.js";
 import {Utils} from "../utilities/utils.js";
 import {testFieldsExist} from "./import-validator.js";
+import {renderTemplate} from "../utilities/compat.js";
 
 /**
  * Records data for a tag on a specific internal (including value if it has one)
@@ -169,7 +170,7 @@ export class HLMItem extends Item {
 	}
 
 	async postFrameMessage(actor) {
-		const displayMessage = await foundry.applications.handlebars.renderTemplate(
+		const displayMessage = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/frame-ability.html",
 			{
 				frame_ability_name: this.system.gear_ability_name,
@@ -188,7 +189,7 @@ export class HLMItem extends Item {
 	}
 
 	async postFlatItem(actor) {
-		let displayString = await foundry.applications.handlebars.renderTemplate(
+		let displayString = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/internal.html",
 			{
 				internal: this,
@@ -214,7 +215,7 @@ export class HLMItem extends Item {
 					newTag.rollspecs = JSON.stringify(newTag.system.roll);
 					tagsCopy.push(newTag);
 				});
-				let tagButtonHtml = await foundry.applications.handlebars.renderTemplate(
+				let tagButtonHtml = await renderTemplate(
 					"systems/fathomlessgears/templates/partials/tag-buttons.html",
 					{
 						tags: tagsCopy

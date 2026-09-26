@@ -3,6 +3,7 @@ import {ACTOR_TYPES} from "../constants.js";
 import {actionText} from "./basic-action-data.js";
 import {ReserveApDialog} from "../dialogs/reserve-ap-dialog.js";
 import {NarrativeRollDialog} from "../dialogs/narrative-dialog.js";
+import {renderTemplate} from "../utilities/compat.js";
 
 export class HUDActionCollection {
 	static addHUDActions() {
@@ -131,7 +132,7 @@ export class HUDActionCollection {
 				.localize("MESSAGE.scantarget")
 				.replace("_ACTOR_NAME_", speaker.name)
 				.replace("_TARGET_NAME_", target.name);
-			foundry.applications.handlebars.renderTemplate(
+			renderTemplate(
 				"systems/fathomlessgears/templates/messages/message-outline.html",
 				{
 					heading: "Scan",
@@ -146,7 +147,7 @@ export class HUDActionCollection {
 
 	textAction(speaker, actionCode) {
 		const actionRecord = actionText[actionCode];
-		foundry.applications.handlebars.renderTemplate(
+		renderTemplate(
 			"systems/fathomlessgears/templates/messages/message-outline.html",
 			{
 				heading: actionRecord.name,
@@ -166,7 +167,7 @@ export class HUDActionCollection {
 		const resupply = 10;
 		const total = spacesCost + repairCost + resupply;
 
-		foundry.applications.handlebars.renderTemplate(
+		renderTemplate(
 			"systems/fathomlessgears/templates/messages/repair-costs.html",
 			{
 				heading: game.i18n

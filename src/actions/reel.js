@@ -1,6 +1,7 @@
 import {ACTOR_TYPES} from "../constants.js";
 import {Utils} from "../utilities/utils.js";
 import {constructCollapsibleRollMessage} from "../actions/collapsible-roll.js";
+import {renderTemplate} from "../utilities/compat.js";
 
 export class ReelHandler {
 	static async reel(rollParams, target) {
@@ -14,7 +15,7 @@ export class ReelHandler {
 				? "MESSAGE.reelPC"
 				: "MESSAGE.reelNPC";
 		const reelMessage = game.i18n.localize(reelMessageText);
-		const rollString = await foundry.applications.handlebars.renderTemplate(
+		const rollString = await renderTemplate(
 			"systems/fathomlessgears/templates/partials/labelled-roll-partial.html",
 			{
 				label_left: game.i18n
