@@ -8,30 +8,40 @@ export default class HLMActorModel extends foundry.abstract.TypeDataModel {
 			nullable: false,
 			integer: true
 		};
-		const attributeElement = new fields.SchemaField({
-			value: new fields.NumberField({
-				...requiredInteger
-			}),
-			source: new fields.StringField({
-				required: true,
-				blank: false
-			}),
-			type: new fields.StringField({
-				required: true,
-				blank: false,
-				choices: [
-					"internal",
-					"development",
-					"template",
-					"condition",
-					"history"
-				]
-			}),
-			label: new fields.StringField({
-				required: true,
-				blank: false
-			})
-		});
+		/**
+		 * A single DataField instance can only ever belong to one parent, so this must
+		 * return a fresh SchemaField every time it's called rather than a shared const -
+		 * it's used inside an ArrayField for every attribute below, and reusing one
+		 * instance across all of them throws "The element DataField already has a
+		 * parent" (a pre-existing bug this schema always had, tolerated silently on
+		 * older Foundry versions but now a hard failure).
+		 */
+		function attributeElement() {
+			return new fields.SchemaField({
+				value: new fields.NumberField({
+					...requiredInteger
+				}),
+				source: new fields.StringField({
+					required: true,
+					blank: false
+				}),
+				type: new fields.StringField({
+					required: true,
+					blank: false,
+					choices: [
+						"internal",
+						"development",
+						"template",
+						"condition",
+						"history"
+					]
+				}),
+				label: new fields.StringField({
+					required: true,
+					blank: false
+				})
+			});
+		}
 		const schema = {};
 
 		schema.attributes = new fields.SchemaField(
@@ -49,7 +59,7 @@ export default class HLMActorModel extends foundry.abstract.TypeDataModel {
 									initial: 0
 								}),
 								additions: new fields.ArrayField(
-									attributeElement
+									attributeElement()
 								)
 							}),
 							custom: new fields.NumberField({
@@ -76,10 +86,10 @@ export default class HLMActorModel extends foundry.abstract.TypeDataModel {
 									initial: 0
 								}),
 								additions: new fields.ArrayField(
-									attributeElement
+									attributeElement()
 								)
 							}),
-							bonus: new fields.ArrayField(attributeElement),
+							bonus: new fields.ArrayField(attributeElement()),
 							custom: new fields.NumberField({
 								...requiredInteger,
 								initial: 0

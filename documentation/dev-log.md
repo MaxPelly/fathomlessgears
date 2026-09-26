@@ -1181,3 +1181,44 @@ happened). Corrected `system.json`'s `token-action-hud-FG` dependency pin to
 `fathomlessgears` remote at the same time - still `Permission denied (publickey)` on both
 fetch and push, so this repo's own `2.0.0-alpha1` tag still needs to be cut from
 somewhere with working access, same as `token-action-hud-FG` was.
+
+## First live-Foundry test result: a real, critical, pre-existing bug found and fixed
+
+The maintainer tested the migrated system against a real v14 client for the first time and
+hit a black screen with `Uncaught (in promise) Error: The element DataField already has a
+parent`, thrown from `ArrayField`'s `_validateElementType` during actor DataModel
+initialization (`base-actor-schema.js:82` -> `fisher-schema.js:22`'s
+`super.defineSchema()` call) - i.e. the world failed to finish loading at all. This is
+exactly the class of bug static analysis in this sandboxed environment could never have
+caught: nothing here can construct a real `foundry.data.fields.SchemaField` and observe
+Foundry's own runtime parent-tracking behaviour.
+
+**Root cause, confirmed by reading the code (not touched by any part of this migration -
+`base-actor-schema.js` was never edited in any chunk):** `attributeElement` was a single
+`SchemaField` instance created *once*, then reused as the element type for `additions`'s
+and `bonus`'s `ArrayField`s across every one of the ~11 attributes in the
+`Object.values(ATTRIBUTES).reduce(...)` loop - roughly 19 separate `ArrayField`
+constructions all pointing at the *same* underlying field object. A Foundry `DataField`
+can only ever have one parent (the field that "owns" it structurally); each additional
+`ArrayField` construction tried to claim the shared instance as its own child and threw
+the moment a second one attempted it. This is a pre-existing, version-independent design
+flaw - genuinely broken schema construction, not a v13/v14 API change - but something
+about how strictly the current Foundry release validates this now turns what was
+presumably a silent tolerance (or an untested code path) on whatever version this schema
+was last verified against into a hard, world-breaking failure.
+
+**Fixed** by turning `attributeElement` into a function that constructs and returns a
+fresh `SchemaField` on every call, then calling it (`attributeElement()`) at each of the
+three usage sites instead of referencing one shared const. Checked the rest of the
+codebase for the same reuse pattern (any field-instance constant referenced from inside a
+loop, or from more than one `ArrayField`/parent site) - `base-item-schema.js`'s
+`getSourceSchema()`/`getAttributeSchema()` already do this correctly (functions, called
+fresh at each of their many use sites), `fisher-schema.js`'s `labelSchema` const is used
+exactly once (safe), and `fish-schema.js` has no shared instances at all. This bug was
+isolated to `attributeElement` alone.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, `.mjs`-copy syntax
+check clean. No way to confirm the actual fix resolves the crash without another live
+test - please re-test and report back, since a black screen this early in world
+initialization could plausibly have been masking other issues further down the load
+sequence that only become visible once this one clears.
