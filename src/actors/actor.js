@@ -58,12 +58,6 @@ export class HLMActor extends Actor {
 
 		this.queuedEffects = [];
 
-		Hooks.on("conditionListReady", () => {
-			setTimeout(() => {
-				this.applyConditions();
-			}, 2000);
-		});
-
 		this.system.attributes.ballast = this.calculateBallast();
 
 		//Conditions are applied above in calculateBallast if isOwner is true

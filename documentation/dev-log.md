@@ -1037,3 +1037,65 @@ back:
 Re-verified after the two fixes: `npm run lint` clean (including the
 `no-unused-private-class-members` check that caught the reverted attempt), `npx prettier
 --check` clean, both touched files pass the `.mjs` syntax check.
+
+## Chunk 6: §10 cleanup (final code chunk)
+
+The last plan §11 item within this workspace's reach (§9, `token-action-hud-FG`, is a
+separate repo not present here - left entirely untouched). Worked through every §10 bullet:
+
+- **`elevationruler.active` throwing:** already resolved as a side effect of §6 deleting
+  `configureElevationRuler` entirely back in chunk 2 - nothing left to do here.
+- **`conditionListReady` listener leak, fixed:** `HLMActor#prepareDerivedData` registered
+  a *new* `Hooks.on("conditionListReady", ...)` listener on every single data-preparation
+  cycle, for every actor, and never removed any of them - since `prepareDerivedData` runs
+  constantly for the lifetime of a client session (every update, every render, every
+  derived-data access) while `conditionListReady` itself only ever fires once (at world
+  `ready`), this was pure unbounded listener accumulation for the rest of the session, with
+  no corresponding benefit (all the excess copies simply never fire again once the one-shot
+  hook has fired). Replaced with a single global listener (`fathomlessgears.js`, registered
+  once at `init`) that iterates `game.actors` plus any currently-placed tokens' synthetic
+  actors (`canvas.tokens.placeables`) and calls `applyConditions()` on each - matching the
+  original per-instance registration's actual coverage (world actors and unlinked-token
+  synthetic actors alike) without the leak.
+- **`narrative-dialog.js` bugs, fixed** (deliberately left alone in chunk 4 pending this
+  dedicated chunk): traced where `modifierStack` - the array the buggy code was trying to
+  push an extra entry onto - actually ends up. It's never rendered anywhere;
+  `roll-handler.js`'s `rollNarrative` only reads `rollParams.dieTotal` (which
+  `calculateDieTotal()` *already* correctly folds `this.additional` into) to decide how
+  many dice to roll, and only `console.log`s `modifierStack.length` otherwise. So the
+  "other" input's actual functional effect on the roll was never broken - only the
+  cosmetic, never-displayed modifier-stack entry was. Fixed anyway for correctness and
+  future maintainability: renamed the dead `additionalLabels` field to `additional`
+  (matching what the UI listener and `calculateDieTotal()` already used), and fixed the
+  `LabelRollElement` call to pass its one real constructor parameter (a name string,
+  e.g. `"Other: 3"`) instead of two arguments to a one-argument constructor.
+- **`fathomlessgears.js` `ready`-hook cleanup, all fixed:**
+  - `game.keybindings.initialize()` removed (core already does this itself after `init`).
+  - `gridCollection.configure({ownership: ...})` now runs only for `game.user.isGM` -
+    previously every connected client redundantly reconfigured the same world-level
+    compendium setting.
+  - All five `game.settings.register(...)` calls moved from `ready` into the existing
+    second `init` hook (alongside the `pinGrid` keybinding registration); only the
+    corresponding `game.settings.get(...)` reads and the intro-dialog decision they feed
+    stayed in `ready`, since those still need world data to be loaded.
+- **`string_id` collision reminder: surfaced**, as its own bullet explicitly asked for once
+  the plan was otherwise finished (see the plan document itself, and the end of this
+  session's conversation) - not a code fix, a decision for the maintainer.
+
+**Plan document reconciliation:** separately from the code changes above, went through
+`documentation/foundry-v13-v14-migration-plan.md` itself and checked off every completed
+item (the checkboxes had never been updated as chunks landed - only this dev log tracked
+progress). Annotated every spot where the actual implementation differs from the plan's
+original text, cross-referenced to the relevant dev-log entry above. Left unchecked, with
+reasons: §9 (separate repo), three genuine "needs a live client" items (pack re-export,
+v14 status-icon verification, the CSS `@layer` cascade-priority risk), and the two §8
+CSS items the maintainer explicitly decided against.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, full `src/`
+`.mjs`-copy syntax sweep clean.
+
+This is the final code chunk of the v13/v14 migration within this workspace's scope.
+Everything remaining is either §9 (separate repo) or requires a live Foundry client this
+sandboxed environment has never had access to at any point in this migration - see every
+chunk's own "Still needs" list above, and the plan document's now-annotated checkboxes,
+for the complete rundown.

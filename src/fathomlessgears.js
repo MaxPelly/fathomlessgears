@@ -95,6 +95,18 @@ Hooks.once("init", async function () {
 	Hooks.on("renderActorDirectory", async (_app, html) => {
 		addGridHudToSidebar(html);
 	});
+	// A single global listener for every actor prepared before the condition item
+	// compendium finished loading, rather than one `HLMActor#prepareDerivedData`
+	// registering its own (never-removed) listener on every data-prep cycle.
+	Hooks.on("conditionListReady", () => {
+		setTimeout(() => {
+			const actors = new Set(game.actors);
+			canvas.tokens?.placeables?.forEach((token) => {
+				if (token.actor) actors.add(token.actor);
+			});
+			actors.forEach((actor) => actor.applyConditions());
+		}, 2000);
+	});
 
 	initialiseHelpers();
 });
@@ -115,6 +127,60 @@ Hooks.on("init", async function () {
 		restricted: false, // Restrict this Keybinding to gamemaster only?
 		precedence: CONST.KEYBINDING_PRECEDENCE.NORMAL
 	});
+
+	// Settings must be registered in init so they exist before anything reads them
+	// (v14 pop-outs and early hooks may read settings before ready fires).
+	game.settings.register("fathomlessgears", "gridHUDPosition", {
+		name: "Grid HUD Position",
+		hint: "The position of the grid HUD display",
+		scope: "client",
+		config: true,
+		type: String,
+		choices: {
+			[GRID_HUD_LOCATION.bottomLeft]: "Bottom Left",
+			[GRID_HUD_LOCATION.bottomRight]: "Bottom Right",
+			[GRID_HUD_LOCATION.topLeft]: "Top Left",
+			[GRID_HUD_LOCATION.topRight]: "Top Right"
+		},
+		default: GRID_HUD_LOCATION.topRight,
+		onChange: (_value) => {
+			game.gridHover.refresh();
+		}
+	});
+	game.settings.register("fathomlessgears", "gridHUDOnHover", {
+		name: "Show grid HUD on token hover",
+		hint: "If disabled, the grid HUD will only be visible via the lock hotkey",
+		scope: "client",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+	game.settings.register("fathomlessgears", "gridHUDOnSidebarHover", {
+		name: "Show grid HUD on actor sidebar hover",
+		hint: "If disabled, the grid HUD will only be visible via the lock hotkey",
+		scope: "client",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+	game.settings.register("fathomlessgears", "datafiles", {
+		name: "Source data files",
+		hint: "Stores the datafile sources for frames, internals, sizes, etc",
+		scope: "world",
+		config: false,
+		type: Array,
+		default: [],
+		requiresReload: false
+	});
+	game.settings.register("fathomlessgears", "introComplete", {
+		name: "Has viewed & checked intro dialog",
+		hint: "Stores the datafile sources for frames, internals, sizes, etc",
+		scope: "world",
+		config: false,
+		type: Boolean,
+		default: false,
+		requiresReload: false
+	});
 });
 
 export const system_ready = new Promise((success) => {
@@ -124,68 +190,17 @@ export const system_ready = new Promise((success) => {
 		HUDActionCollection.addHUDActions();
 		TokenDropHandler.addTokenDropHandler();
 
-		game.keybindings.initialize();
 		//Post-init stuff goes here
 		const gridCollection = await game.packs.get(
 			"fathomlessgears.grid_type"
 		);
-		gridCollection.configure({ownership: {PLAYER: "NONE"}});
+		if (game.user.isGM) {
+			gridCollection.configure({ownership: {PLAYER: "NONE"}});
+		}
 
-		game.settings.register("fathomlessgears", "gridHUDPosition", {
-			name: "Grid HUD Position",
-			hint: "The position of the grid HUD display",
-			scope: "client",
-			config: true,
-			type: String,
-			choices: {
-				[GRID_HUD_LOCATION.bottomLeft]: "Bottom Left",
-				[GRID_HUD_LOCATION.bottomRight]: "Bottom Right",
-				[GRID_HUD_LOCATION.topLeft]: "Top Left",
-				[GRID_HUD_LOCATION.topRight]: "Top Right"
-			},
-			default: GRID_HUD_LOCATION.topRight,
-			onChange: (_value) => {
-				game.gridHover.refresh();
-			}
-		});
-		game.settings.register("fathomlessgears", "gridHUDOnHover", {
-			name: "Show grid HUD on token hover",
-			hint: "If disabled, the grid HUD will only be visible via the lock hotkey",
-			scope: "client",
-			config: true,
-			type: Boolean,
-			default: true
-		});
-		game.settings.register("fathomlessgears", "gridHUDOnSidebarHover", {
-			name: "Show grid HUD on actor sidebar hover",
-			hint: "If disabled, the grid HUD will only be visible via the lock hotkey",
-			scope: "client",
-			config: true,
-			type: Boolean,
-			default: true
-		});
 		GridHoverHUD.addGridHUD();
 
-		game.settings.register("fathomlessgears", "datafiles", {
-			name: "Source data files",
-			hint: "Stores the datafile sources for frames, internals, sizes, etc",
-			scope: "world",
-			config: false,
-			type: Array,
-			default: [],
-			requiresReload: false
-		});
 		const dataFiles = game.settings.get("fathomlessgears", "datafiles");
-
-		game.settings.register("fathomlessgears", "introComplete", {
-			name: "Has viewed & checked intro dialog",
-			hint: "Stores the datafile sources for frames, internals, sizes, etc",
-			scope: "world",
-			config: false,
-			type: Boolean,
-			default: false,
-			requiresReload: false
-		});
 		const introComplete = game.settings.get(
 			"fathomlessgears",
 			"introComplete"

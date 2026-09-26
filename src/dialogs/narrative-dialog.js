@@ -53,7 +53,7 @@ export class NarrativeRollDialog extends HLMApplication {
 
 	modifiers;
 	actor;
-	additionalLabels;
+	additional;
 	difficulty;
 
 	constructor(labels, actor, ...args) {
@@ -64,7 +64,7 @@ export class NarrativeRollDialog extends HLMApplication {
 			this.modifiers.push(modifier);
 		});
 		this.actor = actor;
-		this.additionalLabels = 0;
+		this.additional = 0;
 		this.difficulty = NARRATIVE_DIFFICULTY.none;
 		this.render({force: true});
 	}
@@ -146,11 +146,10 @@ export class NarrativeRollDialog extends HLMApplication {
 			this.difficulty
 		);
 
-		if (parseInt(this.additionalLabels)) {
+		if (parseInt(this.additional)) {
 			rollParams.modifierStack.push(
 				new LabelRollElement(
-					parseInt(this.additionalLabels),
-					game.i18n.localize("ROLLDIALOG.other")
+					`${game.i18n.localize("ROLLDIALOG.other")}: ${parseInt(this.additional)}`
 				)
 			);
 		}
