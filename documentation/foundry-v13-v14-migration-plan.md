@@ -361,6 +361,14 @@ Order (small → large):
       client; guard with `game.user.isGM`.
 - [ ] Settings are registered in `ready`; move to `init` so they exist before anything
       reads them (v14 pop-outs and early hooks may).
+- [ ] **Reminder for the maintainer once this whole plan is complete:** `Utils.toLowerHyphen`
+      (used by `item.js`'s `migrateData` to backfill a missing `string_id` from an item's
+      name) has no uniqueness check, so two items sharing a name can collide - found during
+      chunk 3's code review, confirmed pre-existing (not introduced by this migration) and
+      deliberately left unfixed as out of scope for a version-compat pass. See
+      `documentation/dev-log.md`'s "Chunk 3 code review" section for the full writeup.
+      Surface this explicitly once the plan below is finished, in case it should become its
+      own follow-up task.
 
 ## 11. Suggested implementation order (separate PRs)
 
