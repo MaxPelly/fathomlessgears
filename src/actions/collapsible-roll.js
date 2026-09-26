@@ -1,23 +1,19 @@
-import {Utils} from "../utilities/utils.js";
-
+/**
+ * Renders a roll, then moves its dice formula inside the collapsible tooltip section so
+ * it's hidden until the tooltip is expanded.
+ * @param {Roll} roll The evaluated roll to render
+ * @returns {Promise<string>} The rendered roll HTML, with the formula relocated
+ */
 export async function constructCollapsibleRollMessage(roll) {
-	let html = await roll.render();
-	const collapseString = `<section class="tooltip-part">`;
+	const html = await roll.render();
+	const doc = new DOMParser().parseFromString(html, "text/html");
 
-	const formulaRegex = new RegExp(
-		// eslint-disable-next-line no-useless-escape
-		`<div class="dice-formula">[0-9,d,+, ]*<\/div>`
-	);
-	const collapseRegex = new RegExp(collapseString);
+	const formula = doc.querySelector(".dice-formula");
+	const tooltipPart = doc.querySelector("section.tooltip-part");
+	if (!formula || !tooltipPart) {
+		return html;
+	}
 
-	const result = html.match(formulaRegex)[0];
-	html = html.replace(formulaRegex, "");
-
-	const location = html.match(collapseRegex);
-	html = Utils.insertIntoString(
-		html,
-		result,
-		location["index"] + collapseString.length
-	);
-	return html;
+	tooltipPart.prepend(formula);
+	return doc.body.innerHTML;
 }

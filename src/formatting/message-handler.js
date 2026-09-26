@@ -1,5 +1,6 @@
 import {ITEM_TYPES} from "../constants.js";
 import {constructCollapsibleRollMessage} from "../actions/collapsible-roll.js";
+import {applyMessageMode} from "../utilities/compat.js";
 
 export const FormatterContext = {
 	message: "message",
@@ -16,16 +17,19 @@ export class MessageHandler {
 		this.loadTags();
 		this.addListeners();
 		this.addConditionItemListener();
-		Hooks.on("renderChatMessage", () => {
-			setTimeout(() => {
-				this.addListeners();
-			}, 50);
+		Hooks.on("renderChatMessageHTML", (_message, html) => {
+			this.addListeners(html);
 		});
 	}
 
-	addListeners() {
+	/**
+	 * Wires up listeners for tag/narrative-dice elements rendered within a root element.
+	 * @param {HTMLElement|Document} [root] The root to search within (defaults to the
+	 * whole document, for the initial scan of pre-existing chat messages)
+	 */
+	addListeners(root = document) {
 		//Tags
-		const tagItems = document.querySelectorAll(".tag-display.no-listener");
+		const tagItems = root.querySelectorAll(".tag-display.no-listener");
 		tagItems.forEach((tagElement) => {
 			tagElement.addEventListener("mouseenter", (ev) =>
 				this.onTagHover(ev)
@@ -44,7 +48,7 @@ export class MessageHandler {
 		});
 
 		//Rollable tag buttons
-		const tagRollButtons = document.querySelectorAll(
+		const tagRollButtons = root.querySelectorAll(
 			".tag-roll-btn.no-listener"
 		);
 		tagRollButtons.forEach((button) => {
@@ -58,7 +62,7 @@ export class MessageHandler {
 		});
 
 		//Narrative dice
-		const narrativeRollMessages = document.querySelectorAll(
+		const narrativeRollMessages = root.querySelectorAll(
 			".narrative-roll-message.no-listeners"
 		);
 		narrativeRollMessages.forEach((narrativeRollMessage) => {
@@ -79,10 +83,7 @@ export class MessageHandler {
 		const parser = new DOMParser();
 		const messageDoc = parser.parseFromString(messageBody, "text/html");
 
-		this.transformTagNameToButton(
-			$(messageDoc).get(0),
-			FormatterContext.message
-		);
+		this.transformTagNameToButton(messageDoc, FormatterContext.message);
 
 		let create = {
 			content: messageDoc.body.innerHTML
@@ -90,10 +91,7 @@ export class MessageHandler {
 		if (speaker) {
 			create.speaker = ChatMessage.getSpeaker({actor: speaker});
 		}
-		ChatMessage.applyRollMode(
-			create,
-			game.settings.get("core", "rollMode")
-		);
+		applyMessageMode(create);
 		await ChatMessage.create(create);
 	}
 
@@ -262,10 +260,7 @@ export class MessageHandler {
 		const create = {
 			content: rollDisplay
 		};
-		ChatMessage.applyRollMode(
-			create,
-			game.settings.get("core", "rollMode")
-		);
+		applyMessageMode(create);
 		ChatMessage.create(create);
 	}
 
@@ -350,10 +345,7 @@ export class MessageHandler {
 				const create = {
 					content: html
 				};
-				ChatMessage.applyRollMode(
-					create,
-					game.settings.get("core", "rollMode")
-				);
+				applyMessageMode(create);
 				ChatMessage.create(create);
 			});
 		});

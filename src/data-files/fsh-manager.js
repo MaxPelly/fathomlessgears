@@ -12,28 +12,22 @@ import {HLMApplication} from "../sheets/application.js";
 import {createHLMItemData} from "../items/item.js";
 
 /**
- * Adds the .FSH manager button to the sidebar tab
- * @param {*} app
- * @param {*} html
+ * Adds the .FSH manager button to the compendium sidebar tab
+ * @param {HTMLElement} html The rendered compendium sidebar element
  */
-export function addFshManager(_app, html) {
-	const compendium = html[0].classList?.contains("compendium-sidebar")
-		? html
-		: html.siblings().filter(`.compendium-sidebar`);
-	const presetManager = $(compendium).find(`.fsh-content-manager`);
-	if (presetManager.length == 0) {
-		const buttons = $(compendium).find(`.header-actions`);
-		let button = document.createElement("button");
-		button.setAttribute("style", "flex-basis: 100%; margin-top: 5px;");
-		button.innerHTML =
-			"<i class='fsh-content-manager i--s'></i> FSH Manager";
-		button.addEventListener("click", () => {
-			if (!FshManager.isOpen) {
-				new FshManager();
-			}
-		});
-		buttons.after(button);
-	}
+export function addFshManager(html) {
+	if (html.querySelector(".fsh-content-manager")) return;
+	const buttons = html.querySelector(".header-actions");
+	if (!buttons) return;
+	let button = document.createElement("button");
+	button.setAttribute("style", "flex-basis: 100%; margin-top: 5px;");
+	button.innerHTML = "<i class='fsh-content-manager i--s'></i> FSH Manager";
+	button.addEventListener("click", () => {
+		if (!FshManager.isOpen) {
+			new FshManager();
+		}
+	});
+	buttons.after(button);
 }
 
 /**
@@ -102,7 +96,7 @@ export class FshManager extends HLMApplication {
 		this.dialogConfirm = false;
 		this.loading = false;
 		FshManager.isOpen = true;
-		ui.sidebar.activateTab("compendium");
+		ui.sidebar.changeTab("compendium", "primary");
 		this.render(true);
 	}
 

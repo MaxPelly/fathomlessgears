@@ -176,14 +176,6 @@ export class Utils {
 		return parseInt(valueString);
 	}
 
-	static insertIntoString(startString, insertString, index) {
-		return (
-			startString.slice(0, index) +
-			insertString +
-			startString.slice(index)
-		);
-	}
-
 	static getRoller(dieCount, flatModifier) {
 		const formula = dieCount + "d6" + "+" + flatModifier;
 		return new Roll(formula);

@@ -168,7 +168,7 @@ export class GridHoverHUD extends HLMApplication {
 				"fathomlessgears",
 				"gridHUDOnHover"
 			);
-			if (showOnHover && canvas.activeLayer.name == "TokenLayer") {
+			if (showOnHover && canvas.tokens.active) {
 				if (game.gridHover.lock) {
 					return;
 				}
@@ -243,32 +243,40 @@ function refreshGrid(actor) {
 	}
 }
 
-export function addGridHudToSidebar(_app, html) {
-	const compendium = html[0].classList?.contains("actors-sidebar")
-		? html[0]
-		: html.siblings().filter(`.actors-sidebar`)[0];
-	const actors = compendium.getElementsByClassName(
-		"directory-item document actor"
-	);
-	for (let actorEntry of actors) {
-		const actorId = actorEntry.dataset.documentId;
-		actorEntry.addEventListener("mouseenter", (_ev) => {
-			const showOnHover = game.settings.get(
-				"fathomlessgears",
-				"gridHUDOnSidebarHover"
-			);
-			const actor = game.actors.get(actorId);
-			game.gridHover.hoveredSidebarActor = actor;
-			game.gridHover.hoveringSidebar = true;
-			if (showOnHover) {
-				if (game.gridHover.lock) {
-					return;
-				}
-				game.gridHover.checkShowGridRequirements(actor);
+/**
+ * Wires up grid HUD hover behaviour on the actors sidebar.
+ * Uses a single delegated listener so partial re-renders of the directory
+ * (e.g. folder expand/collapse) don't lose or duplicate listeners.
+ * @param {HTMLElement} html The rendered actors sidebar element
+ */
+export function addGridHudToSidebar(html) {
+	if (html.dataset.gridHudBound) return;
+	html.dataset.gridHudBound = "true";
+
+	let hoveredEntryId = null;
+	html.addEventListener("mouseover", (ev) => {
+		const actorEntry = ev.target.closest("li.directory-item.entry.actor");
+		const actorId = actorEntry?.dataset.entryId ?? null;
+		if (actorId === hoveredEntryId) return;
+		hoveredEntryId = actorId;
+		if (!actorId) return;
+
+		const showOnHover = game.settings.get(
+			"fathomlessgears",
+			"gridHUDOnSidebarHover"
+		);
+		const actor = game.actors.get(actorId);
+		game.gridHover.hoveredSidebarActor = actor;
+		game.gridHover.hoveringSidebar = true;
+		if (showOnHover) {
+			if (game.gridHover.lock) {
+				return;
 			}
-		});
-	}
-	compendium.addEventListener("mouseleave", (_ev) => {
+			game.gridHover.checkShowGridRequirements(actor);
+		}
+	});
+	html.addEventListener("mouseleave", () => {
+		hoveredEntryId = null;
 		game.gridHover.hoveredSidebarActor = null;
 		game.gridHover.hoveringSidebar = false;
 		clearGrid();

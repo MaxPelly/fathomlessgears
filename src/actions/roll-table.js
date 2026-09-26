@@ -6,13 +6,19 @@ export class RollTableHandler {
 		//TODO
 	}
 
-	async createRollTableResult(actor, table, compendiumName, label) {
-		const roll = await table.roll();
+	async createRollTableResult(
+		actor,
+		table,
+		compendiumName,
+		label,
+		rollOptions
+	) {
+		const roll = await table.roll(rollOptions);
 		const result = roll.results[0];
 
 		const item = await Utils.findCompendiumItemFromName(
 			compendiumName,
-			result.text
+			result.name
 		);
 
 		const message = await this.getRenderedHistory(
@@ -39,7 +45,7 @@ export class RollTableHandler {
 
 		if (!actor) {
 			const targetSet = canvas.tokens.controlled;
-			if (targetSet.size < 1) {
+			if (targetSet.length < 1) {
 				ui.notifications.warn(
 					"Select an actor to roll Touch of the Deep"
 				);
@@ -56,13 +62,13 @@ export class RollTableHandler {
 			"fg_roll_tables",
 			"Touch of the Deep"
 		);
-		table.formula = `2d6+${backlash.toString()}`;
 
 		this.createRollTableResult(
 			actor,
 			table,
 			"touch_of_the_deep",
-			"Touch of the Deep"
+			"Touch of the Deep",
+			{roll: new Roll(`2d6+${backlash.toString()}`)}
 		);
 	}
 
@@ -82,7 +88,7 @@ export class RollTableHandler {
 
 	async getRenderedHistory(roll, result, item, label) {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
-		const itemReference = `@UUID[Compendium.${result.documentCollection}.Item.${item._id}]{${item.name}}`;
+		const itemReference = `@UUID[${item.uuid}]{${item.name}}`;
 
 		const message = await renderTemplate(
 			"systems/fathomlessgears/templates/messages/history-table-roll-message.html",
