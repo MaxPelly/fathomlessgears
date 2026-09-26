@@ -1,22 +1,19 @@
-export class HLMApplication extends Application {
-	loading;
-
-	constructor(...args) {
-		super(...args);
-		this.loading = false;
-	}
+export class HLMApplication extends foundry.applications.api.HandlebarsApplicationMixin(
+	foundry.applications.api.ApplicationV2
+) {
+	loading = false;
 
 	startLoading(message) {
-		document.getElementById("overlay").style.display = "block";
+		this.element.querySelector("#overlay").style.display = "block";
 		this.updateLoadingMessage(`${message}`);
 	}
 
 	updateLoadingMessage(newMessage) {
-		document.getElementById("loading-text").innerHTML =
+		this.element.querySelector("#loading-text").innerHTML =
 			`<p>${newMessage}...</p>`;
 	}
 
 	stopLoading() {
-		document.getElementById("overlay").style.display = "none";
+		this.element.querySelector("#overlay").style.display = "none";
 	}
 }

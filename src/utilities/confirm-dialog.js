@@ -19,25 +19,12 @@ export class ConfirmDialog {
 		this.showDialog();
 	}
 
-	showDialog() {
-		new Dialog({
-			title: this.title,
+	async showDialog() {
+		const proceed = await foundry.applications.api.DialogV2.confirm({
+			window: {title: this.title},
 			content: "<p>" + this.content + "</p>",
-			buttons: {
-				cancel: {
-					label: "Cancel",
-					callback: async () => {
-						await this.callbackAction(false, this.args);
-					}
-				},
-				confirm: {
-					label: "Confirm",
-					callback: async () => {
-						await this.callbackAction(true, this.args);
-					}
-				}
-			},
-			default: "cancel"
-		}).render(true);
+			rejectClose: false
+		});
+		await this.callbackAction(Boolean(proceed), this.args);
 	}
 }

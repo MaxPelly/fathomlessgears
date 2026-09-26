@@ -3,45 +3,52 @@ import {Utils} from "../utilities/utils.js";
 import {HLMApplication} from "../sheets/application.js";
 
 export class ReserveApDialog extends HLMApplication {
-	constructor(actor) {
-		super();
+	static DEFAULT_OPTIONS = {
+		classes: ["fathomlessgears"],
+		window: {title: "RESERVEDIALOG.name"},
+		position: {width: 200},
+		actions: {
+			confirm: ReserveApDialog.#onConfirm
+		}
+	};
+
+	static PARTS = {
+		main: {
+			template: "systems/fathomlessgears/templates/reserve-ap-dialog.html"
+		}
+	};
+
+	constructor(actor, ...args) {
+		super(...args);
 		this.actor = actor;
 		this.ap = 1;
 		this.quickened = true;
-		this.render(true);
+		this.render({force: true});
 	}
 
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears"],
-			template:
-				"systems/fathomlessgears/templates/reserve-ap-dialog.html",
-			title: game.i18n.localize("RESERVEDIALOG.name"),
-			width: 200
-		});
-	}
-
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.ap = this.ap;
 		context.quickened = this.quickened;
 		return context;
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
-		Utils.activateButtons(html);
-		html.find(".btn").click(this.triggerAction.bind(this));
-		html.find(`[data-selector="quickened"]`).click();
-		html.find('[data-selector="quickened"]').change(async (evt) => {
-			this.quickened = evt.target.checked;
-		});
-		html.find('[data-selector="ap"]').change(async (evt) => {
-			this.ap = evt.target.valueAsNumber;
-		});
+	_onRender(context, options) {
+		super._onRender(context, options);
+		Utils.activateButtons(this.element);
+		this.element
+			.querySelector('[data-selector="quickened"]')
+			.addEventListener("change", (evt) => {
+				this.quickened = evt.target.checked;
+			});
+		this.element
+			.querySelector('[data-selector="ap"]')
+			.addEventListener("change", (evt) => {
+				this.ap = evt.target.valueAsNumber;
+			});
 	}
 
-	async triggerAction() {
+	static async #onConfirm() {
 		const quickened = await findConditionFromStatus(CONDITIONS.quickened);
 		const evasive = await findConditionFromStatus(CONDITIONS.evasive);
 

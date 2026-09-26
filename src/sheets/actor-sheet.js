@@ -192,7 +192,7 @@ export class HLMActorSheet extends ActorSheet {
 				CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
 			)
 		) {
-			Utils.activateButtons(html);
+			Utils.activateButtons(html[0]);
 			// html.find(".card-body").each(function () {
 			// 	this.classList.add("interactable");
 			// });

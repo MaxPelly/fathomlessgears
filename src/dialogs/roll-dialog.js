@@ -71,8 +71,21 @@ export class RollDialog extends HLMApplication {
 	actionCode;
 	cover;
 
-	constructor(modifiers, actor, attribute, itemId, actionCode) {
-		super();
+	static DEFAULT_OPTIONS = {
+		classes: ["fathomlessgears"],
+		window: {title: "Roll Inputs"},
+		position: {width: 300},
+		actions: {
+			triggerRoll: RollDialog.#onTriggerRoll
+		}
+	};
+
+	static PARTS = {
+		main: {template: "systems/fathomlessgears/templates/roll-dialog.html"}
+	};
+
+	constructor(modifiers, actor, attribute, itemId, actionCode, ...args) {
+		super(...args);
 		this.flatModifiers = [];
 		this.flatBonuses = [];
 		modifiers.forEach((modifier) => {
@@ -91,26 +104,18 @@ export class RollDialog extends HLMApplication {
 		this.additionalDie = 0;
 		this.focused = actor.statuses.has(CONDITIONS.focused);
 		this.cover = COVER_STATES.none;
-		this.render(true);
+		this.render({force: true});
 	}
 
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears"],
-			template: "systems/fathomlessgears/templates/roll-dialog.html",
-			title: "Roll Inputs",
-			width: 300
-		});
-	}
-
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.flatModifiers = this.flatModifiers;
 		context.flatBonuses = this.flatBonuses;
 		context.die = this.dieModifiers;
 		context.additionalDie = this.additionalDie;
 		context.additionalFlat = this.additionalFlat;
 		context.ranged = this.attribute == ATTRIBUTES.far;
+		context.focused = this.focused;
 		context.totalString =
 			this.calculateDieTotal().toString() +
 			"d6 + " +
@@ -120,37 +125,33 @@ export class RollDialog extends HLMApplication {
 		return context;
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
-		Utils.activateButtons(html);
-		html.find(".btn").click(this.triggerRoll.bind(this));
-		html.find('[data-selector="additionalFlat"]').change(async (_evt) => {
-			this.additionalFlat = _evt.target.value;
-			this.updateTotalString();
+	_onRender(context, options) {
+		super._onRender(context, options);
+		Utils.activateButtons(this.element);
+		this.element
+			.querySelector('[data-selector="additionalFlat"]')
+			.addEventListener("change", (evt) => {
+				this.additionalFlat = evt.target.value;
+				this.updateTotalString();
+			});
+		this.element
+			.querySelector('[data-selector="focused"]')
+			.addEventListener("change", (evt) => {
+				this.focused = evt.target.checked;
+				this.updateTotalString();
+			});
+		this.element.querySelectorAll('[name="cover"]').forEach((radio) => {
+			radio.addEventListener("change", (evt) => {
+				this.cover = evt.target.value;
+			});
 		});
-		html.find('[data-selector="focused"]').change(async (_evt) => {
-			this.focused = _evt.target.checked;
-			this.updateTotalString();
-		});
-		html.find('[name="cover"]').change(async (_evt) => {
-			this.cover = _evt.target.value;
-		});
-		html.find(".element-checkbox").change(async (_evt) => {
-			this.toggleModifier(_evt);
-		});
-		this.flatModifiers.forEach((modifier) => {
-			if (modifier.active) {
-				html.find(`[data-id=${modifier.id}]`).click();
-			}
-		});
-		this.flatBonuses.forEach((modifier) => {
-			if (modifier.active) {
-				html.find(`[data-id=${modifier.id}]`).click();
-			}
-		});
-		if (this.focused) {
-			html.find(`[data-selector="focused"]`).click();
-		}
+		this.element
+			.querySelectorAll(".element-checkbox")
+			.forEach((checkbox) => {
+				checkbox.addEventListener("change", (evt) => {
+					this.toggleModifier(evt);
+				});
+			});
 	}
 
 	calculateDieTotal() {
@@ -181,7 +182,7 @@ export class RollDialog extends HLMApplication {
 		return totalAttr + totalBonus;
 	}
 
-	async triggerRoll() {
+	static async #onTriggerRoll() {
 		const modifierStack = [
 			...this.flatModifiers,
 			...this.flatBonuses
@@ -249,7 +250,7 @@ export class RollDialog extends HLMApplication {
 			this.calculateDieTotal().toString() +
 			"d6 + " +
 			this.calculateFlatTotal().toString();
-		const totalElement = document.getElementById("total-string");
+		const totalElement = this.element.querySelector("#total-string");
 		totalElement.innerHTML = totalString;
 	}
 

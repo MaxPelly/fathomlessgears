@@ -36,13 +36,28 @@ function getFullSuccessThreshold(difficulty) {
 }
 
 export class NarrativeRollDialog extends HLMApplication {
+	static DEFAULT_OPTIONS = {
+		classes: ["fathomlessgears"],
+		window: {title: "Roll Inputs"},
+		position: {width: 500},
+		actions: {
+			triggerRoll: NarrativeRollDialog.#onTriggerRoll
+		}
+	};
+
+	static PARTS = {
+		main: {
+			template: "systems/fathomlessgears/templates/narrative-dialog.html"
+		}
+	};
+
 	modifiers;
 	actor;
 	additionalLabels;
 	difficulty;
 
-	constructor(labels, actor) {
-		super();
+	constructor(labels, actor, ...args) {
+		super(...args);
 		this.modifiers = [];
 		labels.forEach((label) => {
 			let modifier = new LabelRollElement(label.name);
@@ -51,22 +66,14 @@ export class NarrativeRollDialog extends HLMApplication {
 		this.actor = actor;
 		this.additionalLabels = 0;
 		this.difficulty = NARRATIVE_DIFFICULTY.none;
-		this.render(true);
+		this.render({force: true});
 	}
 
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears"],
-			template: "systems/fathomlessgears/templates/narrative-dialog.html",
-			title: "Roll Inputs",
-			width: 500
-		});
-	}
-
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.modifiers = this.modifiers;
 		context.additional = this.additional;
+		context.difficulty = this.difficulty;
 		context.totalString = this.calculateDieTotal().toString() + "d6";
 		context.checkDifficulties = [];
 		Object.keys(NARRATIVE_DIFFICULTY).forEach((difficulty) => {
@@ -80,21 +87,29 @@ export class NarrativeRollDialog extends HLMApplication {
 		return context;
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
-		Utils.activateButtons(html);
-		html.find(".btn").click(this.triggerRoll.bind(this));
-		html.find('[data-selector="additional"]').change(async (_evt) => {
-			this.additional = _evt.target.value;
-			this.updateTotalString();
-		});
-		html.find(".element-checkbox").change(async (_evt) => {
-			this.toggleModifier(_evt);
-		});
-		html.find('[name="difficulty"]').change(async (_evt) => {
-			this.updateDifficulty(_evt.target.value);
-		});
-		html.find(`[id="${this.difficulty}"]`).click();
+	_onRender(context, options) {
+		super._onRender(context, options);
+		Utils.activateButtons(this.element);
+		this.element
+			.querySelector('[data-selector="additional"]')
+			.addEventListener("change", (evt) => {
+				this.additional = evt.target.value;
+				this.updateTotalString();
+			});
+		this.element
+			.querySelectorAll(".element-checkbox")
+			.forEach((checkbox) => {
+				checkbox.addEventListener("change", (evt) => {
+					this.toggleModifier(evt);
+				});
+			});
+		this.element
+			.querySelectorAll('[name="difficulty"]')
+			.forEach((radio) => {
+				radio.addEventListener("change", (evt) => {
+					this.updateDifficulty(evt.target.value);
+				});
+			});
 	}
 
 	calculateDieTotal() {
@@ -120,7 +135,7 @@ export class NarrativeRollDialog extends HLMApplication {
 		return dice;
 	}
 
-	async triggerRoll() {
+	static async #onTriggerRoll() {
 		const modifierStack = this.modifiers.filter((element) =>
 			Boolean(element.active)
 		);
@@ -154,20 +169,22 @@ export class NarrativeRollDialog extends HLMApplication {
 
 	updateTotalString() {
 		const totalString = this.calculateDieTotal().toString() + "d6";
-		const totalElement = document.getElementById("total-string");
+		const totalElement = this.element.querySelector("#total-string");
 		totalElement.innerHTML = totalString;
 	}
 
 	updateGoodEnoughString() {
 		const string = getGoodEnoughThreshold(this.difficulty);
-		const goodEnoughElement = document.getElementById("goodenough-string");
+		const goodEnoughElement =
+			this.element.querySelector("#goodenough-string");
 		goodEnoughElement.innerHTML = string;
 	}
 
 	updateFullSuccessString() {
 		const string = getFullSuccessThreshold(this.difficulty);
-		const fullSuccessElement =
-			document.getElementById("fullsuccess-string");
+		const fullSuccessElement = this.element.querySelector(
+			"#fullsuccess-string"
+		);
 		fullSuccessElement.innerHTML = string;
 	}
 

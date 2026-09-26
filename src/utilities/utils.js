@@ -208,8 +208,8 @@ export class Utils {
 	}
 
 	static activateButtons(html) {
-		html.find(".btn").each(function () {
-			this.classList.add("btn-active");
+		html.querySelectorAll(".btn").forEach((el) => {
+			el.classList.add("btn-active");
 		});
 	}
 
