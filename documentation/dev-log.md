@@ -1171,3 +1171,13 @@ latest local commit, which this session cannot explain (no `git push` was ever r
 here). **Actual tagging, pushing, and publishing the GitHub release for either repo could
 not be done from this session** - that needs to happen wherever push access actually
 works, or with working credentials restored here.
+
+**Update:** the maintainer pulled `token-action-hud-FG` from elsewhere with working
+credentials shortly after the above was written, confirming it's actually been tagged
+`1.0.0-alpha1` (not `1.0.0-alpha`, which is what that module's own plan document had said
+it would release as - the plan was one step behind the real release by the time it
+happened). Corrected `system.json`'s `token-action-hud-FG` dependency pin to
+`1.0.0-alpha1` to match. Re-checked this session's own credentials for the
+`fathomlessgears` remote at the same time - still `Permission denied (publickey)` on both
+fetch and push, so this repo's own `2.0.0-alpha1` tag still needs to be cut from
+somewhere with working access, same as `token-action-hud-FG` was.
