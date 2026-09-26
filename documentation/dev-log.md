@@ -747,3 +747,34 @@ template precompiled without error via a temporary, unsaved `npm install handleb
 - All of §12's dialog/HUD-relevant test items: FSH manager import/update/delete + intro
   dialog flow, sidebar/token hover -> grid HUD, `G` lock, HUD position setting, all roll
   types' dialogs (attribute, reel, narrative, tag), pop-out behaviour.
+
+## Chunk 4 code review (finding, fixed; two flagged, no action needed)
+
+Ran `/code-review` (high effort) against all five chunk 4 commits. Three findings came
+back:
+
+1. **Real regression, confirmed and fixed:** `ConfirmDialog`'s `showDialog()` call to
+   `DialogV2.confirm(...)` didn't pass `yes`/`no` button-label overrides, so every caller
+   (e.g. `items-manager.js`'s "Override Imported Data" prompts) fell back to
+   `DialogV2.confirm`'s own default button text instead of the original "Confirm"/"Cancel"
+   wording the old `Dialog` implementation set explicitly. Confirmed the fix's shape
+   against the real docs: `confirm()`'s own doc text documents `yes`/`no` as valid
+   top-level config keys ("Options to overwrite the default yes/no button configuration"),
+   and `DialogV2Button` confirms `label: string` is the field to override. Fixed by adding
+   `yes: {label: "Confirm"}, no: {label: "Cancel"}` to the `confirm()` call.
+2. **Already tracked, no new action:** the review independently re-found
+   `NarrativeRollDialog`'s `additional`/`additionalLabels` mismatch - this is the exact bug
+   chunk 4's own dev-log entry (step 3, above) already documented as deliberately
+   preserved rather than fixed, pending the dedicated plan §10 cleanup chunk. Re-confirmed
+   the reasoning still holds; no code change from this review pass.
+3. **Considered, declined:** the review suggested extracting the repeated
+   `querySelectorAll(sel).forEach((el) => el.addEventListener(type, handler))` pattern
+   into a shared `Utils` helper. Checked the actual spread: it's only 4 call sites across
+   2 files (`roll-dialog.js`, `narrative-dialog.js`) - `reserve-ap-dialog.js`/`uploader.js`
+   use single-element `querySelector`, a different (simpler) shape, so the duplication is
+   narrower than the review's phrasing suggested. Declined per this project's own stated
+   preference for avoiding premature abstraction over a handful of similar lines; each
+   site's selector, event type, and handler body already differ enough that a generic
+   wrapper would save little while adding a new API surface to maintain.
+
+Re-verified after the fix: `npm run lint` clean, `npx prettier --check` clean.

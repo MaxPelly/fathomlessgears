@@ -23,7 +23,9 @@ export class ConfirmDialog {
 		const proceed = await foundry.applications.api.DialogV2.confirm({
 			window: {title: this.title},
 			content: "<p>" + this.content + "</p>",
-			rejectClose: false
+			rejectClose: false,
+			yes: {label: "Confirm"},
+			no: {label: "Cancel"}
 		});
 		await this.callbackAction(Boolean(proceed), this.args);
 	}
