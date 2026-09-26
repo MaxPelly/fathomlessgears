@@ -4,12 +4,13 @@ Tracks implementation progress against `foundry-v13-v14-migration-plan.md`. Entr
 added as work lands, grouped by the plan's chunks (see plan §11 "Suggested implementation
 order").
 
-**Testing note:** this environment has no Foundry install, no `npm`/`npx`, and no installed
-`node_modules` (network access to the npm registry works, but there is no npm binary to
-install packages with). Verification in this environment is therefore limited to:
-syntax validation, manual code review, and JSON validation. Every chunk still needs a real
-in-Foundry smoke test (§12 test matrix) before merging - this log flags what to verify by
-hand.
+**Testing note:** this environment has no Foundry install. `npm`/`npx`/`node_modules`
+**are now available** (as of the "npm now available" session below) - `npm install`,
+`npm run lint`, and `npm run pull-packs`/`push-packs` all work. Verification is therefore
+now: `eslint`/`prettier` (real, not simulated), full-tree syntax validation, JSON
+validation, and manual code review - still no substitute for a real in-Foundry smoke test
+(§12 test matrix), since there's still no Foundry client/server to actually load the
+system and exercise runtime behaviour, hooks, or template rendering.
 
 **Syntax-check gotcha:** plain `node --check some-file.js` on this repo is **not**
 reliable, because `package.json` has no `"type": "module"` and Node's module-type
@@ -290,3 +291,72 @@ similar) if that guessed key didn't exist - it doesn't appear to.
 
 See `documentation/foundry-module-migration-reference.md` for the reusable how-to (doc
 site access, tooling gotchas) distilled out of this session for future migration work.
+
+## npm now available - real lint run, extra chunk 1 verification
+
+Got a working `npm`/`node` in this environment for the first time (previously only
+syntax-checkable via `.mjs` copies and manual review). Ran `npm install` (157 packages,
+0 vulnerabilities) and used it to actually verify chunk 1 rather than just simulate it.
+
+- `npm run lint` (real `eslint . --fix`, not a manual read-through): found one genuine
+  bug introduced by the chunk 1 §3.2 roll-table fix. `RollTableHandler.getRenderedHistory`
+  took a `result` parameter that was only ever used to build
+  `` `@UUID[Compendium.${result.documentCollection}...` ``; when that was replaced with
+  `` `@UUID[${item.uuid}]{${item.name}}` `` (the real §3.2 fix), `result` became fully
+  unused but was left in the signature and call site
+  (`src/actions/roll-table.js:25-30,90`). ESLint's `no-unused-vars` (added in chunk 1's
+  own `eslint.config.mjs` changes) caught it immediately - this is exactly the kind of
+  thing manual review missed and a real lint pass exists to catch. Fixed by dropping the
+  dead parameter from both `getRenderedHistory`'s signature and its one call site in
+  `createRollTableResult`. Re-ran `npm run lint` clean afterwards.
+- `npx prettier . --check`: only the three documentation `.md` files need reformatting
+  (pre-existing, unrelated to any migration code) - all touched JS is already
+  Prettier-clean.
+- Full `src/` tree re-verified with the `.mjs`-copy syntax check (still the reliable
+  method - see the migration reference doc) - all files pass, no repeat of the
+  mid-import-insertion bug from the chunk 1 code review.
+- Manually confirmed every `compat.js` import site (`message-handler.js`, `roll-handler.js`,
+  `attack.js`, `roll-table.js`, `reel.js`, `hud-actions.js`, `item.js`, `grid-base.js`,
+  `templates.js`, `actor.js`) imports only names `compat.js` actually exports
+  (`applyMessageMode`, `renderTemplate`, `loadTemplates`) - no typos.
+- Verified the `eslint.config.mjs` `no-restricted-globals` regression guard (added in
+  chunk 1) actually fires: a throwaway file calling bare `renderTemplate(...)` was
+  correctly flagged and removed again.
+- Manually re-checked `system.json` against plan §1 - `compatibility`, `relationships.requires`
+  versions, `grid`/no `gridDistance`, `type: "system"`, and every pack `path` (including
+  the intentional `grid_type` name vs `packs/grid_types` path mismatch) all match the plan
+  exactly, and every referenced `packs/<name>` directory exists on disk.
+- Grepped `src/` for lingering deprecated-API usage: no bare `$(...)` left outside the
+  (still-AppV1, not-yet-migrated) sheets/grid files chunk 1 didn't touch; the two
+  `result.text` hits left in `roll-handler.js` are a false positive - that `result` is the
+  return value of `rollNoTarget` (an internal roll-message object), not a Foundry
+  `TableResult`, so it's unrelated to the §3.2 roll-table field rename.
+- **Confirmed (not just documented) that §3.2's remaining source-pack task still needs a
+  live Foundry world:** ran `npm run pull-packs` against the existing `packs/`
+  LevelDB stores. It re-extracted `fg_roll_tables`'s JSON with the exact same
+  `text`/`documentCollection`/`documentId` fields as before (just reformatted
+  indentation from the newer CLI version) - i.e. the on-disk compendium data itself was
+  never migrated to `name`/`documentUuid`, because that migration only happens inside a
+  live Foundry core document class, which `@foundryvtt/foundryvtt-cli`'s `extractPack`
+  doesn't invoke. This reverted the pack directories back to their committed state
+  afterwards (formatting-only diff, no content value) rather than leaving noise.
+- **New, unrelated-to-migration finding surfaced by the same `pull-packs` run:** the
+  compendium LevelDB stores in `packs/background`, `packs/deep_word`, `packs/development`,
+  `packs/frame_pc`, `packs/internal_pc`, and `packs/maneuver` all contain real, substantial
+  content (7 backgrounds, 9 deep words, 20 developments, 13 frames, ~100 internals, 36
+  maneuvers), but the corresponding `src/packs/<name>/` directories are committed
+  **empty** - the JSON source-of-truth export for six entire compendiums appears to have
+  never been committed. This is a pre-existing gap, not something this migration touched
+  or caused, and re-exporting/committing ~150 new files is out of scope for this pass -
+  flagged here for the maintainer to decide whether to `npm run pull-packs` and commit
+  the result. (The run's other two single-file drifts - a renamed `Catch Counter`
+  condition and a renamed `Siltstalker Leviathan` grid type, whose old committed
+  filenames no longer match the live compendium's current document names - are the same
+  underlying "source JSON is stale relative to the live packs" issue, just smaller in
+  scope.)
+- Confirmed `.github/workflows/main.yml` still matches what chunk 1 recorded
+  (`checkout@v4`, `LICENSE.txt`, `template.json` still zipped pending §2).
+
+No further code changes needed beyond the `roll-table.js` fix above - chunk 1 remains
+otherwise verified correct. `npm run lint`/`npm install` are no longer blocked in this
+environment and should be part of routine verification for every future chunk.

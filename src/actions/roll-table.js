@@ -22,12 +22,7 @@ export class RollTableHandler {
 			result.name
 		);
 
-		const message = await this.getRenderedHistory(
-			roll,
-			result,
-			item,
-			label
-		);
+		const message = await this.getRenderedHistory(roll, item, label);
 
 		game.tagHandler.createChatMessage(message, actor);
 	}
@@ -87,7 +82,7 @@ export class RollTableHandler {
 		game.tagHandler.createChatMessage(message, actor);
 	}
 
-	async getRenderedHistory(roll, result, item, label) {
+	async getRenderedHistory(roll, item, label) {
 		const rollString = await constructCollapsibleRollMessage(roll.roll);
 		const itemReference = `@UUID[${item.uuid}]{${item.name}}`;
 
