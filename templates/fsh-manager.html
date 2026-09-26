@@ -1,4 +1,4 @@
-<form autocomplete="off">
+<div>
     <div id="overlay">
         <div class="loading-display flex-col">
             <div id="loading-text" class="loading-text"></div>
@@ -14,10 +14,10 @@
             <li class="datafile-row">
                 <div class="datafile-label">{{file.filename}}</div>
                 <div class="datafile-version">{{file.version}}</div>
-                <div class="btn update" filename="{{file.filename}}" version="{{file.version}}" i18n>{{localize "MANAGER.update"}}</div>
-                <div class="btn remove" filename="{{file.filename}}" version="{{file.version}}" i18n>{{localize "MANAGER.delete"}}</div>
+                <div class="btn update" data-action="update" filename="{{file.filename}}" version="{{file.version}}" i18n>{{localize "MANAGER.update"}}</div>
+                <div class="btn remove" data-action="remove" filename="{{file.filename}}" version="{{file.version}}" i18n>{{localize "MANAGER.delete"}}</div>
             </li>
         {{/each}}
     </ol>
-    <div class="btn add-new-fsh">{{localize "MANAGER.add"}}...</div>
-</form>
+    <div class="btn add-new-fsh" data-action="addNew">{{localize "MANAGER.add"}}...</div>
+</div>

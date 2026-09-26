@@ -1,56 +1,58 @@
 import {Utils} from "../utilities/utils.js";
 
-export class FileUploader extends Application {
+export class FileUploader extends foundry.applications.api.HandlebarsApplicationMixin(
+	foundry.applications.api.ApplicationV2
+) {
 	targetFile;
 	manager;
 	newFile;
 
-	constructor(manager, options = null) {
-		super();
+	static DEFAULT_OPTIONS = {
+		classes: ["fathomlessgears"],
+		window: {title: "File Upload"},
+		position: {width: 400, height: 115},
+		actions: {
+			upload: FileUploader.#onUploadButtonClick
+		}
+	};
+
+	static PARTS = {
+		main: {template: "systems/fathomlessgears/templates/uploader.html"}
+	};
+
+	constructor(manager, options = null, ...args) {
+		super(...args);
 		this.uploaderOptions = options;
 		this.manager = manager;
 
 		if (this.uploaderOptions?.importNameOption) {
 			this.uploaderOptions.importNameFlag = true;
 		}
-		this.render(true);
+		this.render({force: true});
 	}
 
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears"],
-			template: "systems/fathomlessgears/templates/uploader.html",
-			title: "File Upload",
-			width: 400,
-			height: 115
-		});
-	}
-
-	async getData(options) {
-		const context = await super.getData(options);
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.importName = this.uploaderOptions?.importNameOption;
 		return context;
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
-		Utils.activateButtons(html);
-		let fileInput = document.getElementById("fsh-file-select");
+	_onRender(context, options) {
+		super._onRender(context, options);
+		Utils.activateButtons(this.element);
+		let fileInput = this.element.querySelector("#fsh-file-select");
 		if (fileInput) {
 			fileInput.onchange = (ev) => {
 				this._selectFile(ev);
 			};
 		}
-		document
-			.getElementsByClassName("file-upload-button")[0]
-			?.addEventListener("click", () => {
-				this._onUploadButtonClick().then();
-			});
-		if (this.uploaderOptions.importNameOption) {
-			html.find(".import-name-checkbox").change(async (_evt) => {
-				this.uploaderOptions.importNameFlag =
-					!this.uploaderOptions.importNameFlag;
-			});
+		if (this.uploaderOptions?.importNameOption) {
+			this.element
+				.querySelector(".import-name-checkbox")
+				.addEventListener("change", () => {
+					this.uploaderOptions.importNameFlag =
+						!this.uploaderOptions.importNameFlag;
+				});
 		}
 	}
 
@@ -66,7 +68,7 @@ export class FileUploader extends Application {
 	/**
 	 * Load the binary and activate the upload button
 	 */
-	async _onUploadButtonClick() {
+	static #onUploadButtonClick() {
 		//need to read the file as binary since Foundry's uploaders don't like the .fsh extension
 		const fr = new FileReader();
 		fr.readAsBinaryString(this.newFile);

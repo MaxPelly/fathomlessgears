@@ -83,7 +83,28 @@ class DataFileRecorder {
  * Core class for the manager window
  */
 export class FshManager extends HLMApplication {
-	static isOpen;
+	static ID = "fsh-manager";
+
+	static DEFAULT_OPTIONS = {
+		id: FshManager.ID,
+		classes: ["fathomlessgears"],
+		window: {title: ".FSH Manager"},
+		position: {width: 500, height: 400},
+		actions: {
+			addNew: FshManager.#onAddNew,
+			update: FshManager.#onUpdate,
+			remove: FshManager.#onRemove
+		}
+	};
+
+	static PARTS = {
+		main: {template: "systems/fathomlessgears/templates/fsh-manager.html"}
+	};
+
+	static get isOpen() {
+		return foundry.applications.instances.has(FshManager.ID);
+	}
+
 	dataFiles;
 	dataFileRecorder;
 	dialogConfirm;
@@ -95,46 +116,43 @@ export class FshManager extends HLMApplication {
 		this.dataFiles = fileList ? fileList : [];
 		this.dialogConfirm = false;
 		this.loading = false;
-		FshManager.isOpen = true;
 		ui.sidebar.changeTab("compendium", "primary");
-		this.render(true);
+		this.render({force: true});
 	}
 
-	static get defaultOptions() {
-		return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["fathomlessgears"],
-			template: "systems/fathomlessgears/templates/fsh-manager.html",
-			title: ".FSH Manager",
-			width: 500,
-			height: 400
-		});
-	}
-
-	async getData() {
-		const context = {};
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
 		context.dataFiles = this.dataFiles;
 		return context;
 	}
 
-	close(...args) {
-		super.close(...args);
-		FshManager.isOpen = false;
+	_onRender(context, options) {
+		super._onRender(context, options);
+		Utils.activateButtons(this.element);
 	}
 
-	activateListeners(html) {
-		super.activateListeners(html);
-		Utils.activateButtons(html);
+	static #onAddNew() {
+		new FileUploader(this);
+	}
 
-		document
-			.getElementsByClassName("add-new-fsh")[0]
-			?.addEventListener("click", () => {
-				new FileUploader(this);
-			});
+	static #onUpdate(_event, target) {
+		const targetRecord = new FileRecord(
+			target.getAttribute("filename"),
+			target.getAttribute("version")
+		);
+		new FileUploader(this, {targetFile: targetRecord});
+	}
 
-		if (this.dataFiles.length > 0) {
-			html.find(".update").click(this.updateCallback.bind(this));
-			html.find(".remove").click(this.removeCallback.bind(this));
-		}
+	static async #onRemove(_event, target) {
+		this.startLoading(game.i18n.localize("MANAGER.init"));
+		const targetRecord = new FileRecord(
+			target.getAttribute("filename"),
+			target.getAttribute("version")
+		);
+		await deleteFileRecord(targetRecord, this);
+		this.updateLoadingMessage(game.i18n.localize("MANAGER.removesource"));
+		this.removeDataSource(targetRecord);
+		this.stopLoading();
 	}
 
 	/**
@@ -245,7 +263,7 @@ export class FshManager extends HLMApplication {
 	addDataSource(fileRecord) {
 		this.dataFileRecorder.addRecord(fileRecord);
 		this.fileList = this.dataFileRecorder.getFileList();
-		this.render(true);
+		this.render({force: true});
 	}
 
 	/**
@@ -255,35 +273,7 @@ export class FshManager extends HLMApplication {
 	removeDataSource(fileRecord) {
 		this.dataFileRecorder.removeRecord(fileRecord);
 		this.fileList = this.dataFileRecorder.getFileList();
-		this.render(true);
-	}
-
-	/**
-	 * Triggers the removal of a data file
-	 * @param {Event} ev The callback event
-	 */
-	async removeCallback(ev) {
-		this.startLoading(game.i18n.localize("MANAGER.init"));
-		const targetRecord = new FileRecord(
-			ev.target.attributes.filename.value,
-			ev.target.attributes.version.value
-		);
-		await deleteFileRecord(targetRecord, this);
-		this.updateLoadingMessage(game.i18n.localize("MANAGER.removesource"));
-		this.removeDataSource(targetRecord);
-		this.stopLoading();
-	}
-
-	/**
-	 * Triggers the removal of a data file
-	 * @param {Event} ev The callback event
-	 */
-	updateCallback(ev) {
-		const targetRecord = new FileRecord(
-			ev.target.attributes.filename.value,
-			ev.target.attributes.version.value
-		);
-		new FileUploader(this, {targetFile: targetRecord});
+		this.render({force: true});
 	}
 }
 
