@@ -207,3 +207,86 @@ gotcha note above). Caught by copying to `.mjs` and rechecking after the code re
 flagged the duplication issue that led to touching these files again; fixed by moving the
 misplaced import above the multi-line block it landed inside. A full `.mjs`-based sweep
 of the entire `src/` tree (not just touched files) confirms no other files were affected.
+
+## Chunk 1: verification against the official API docs
+
+Got access to Foundry's real generated API reference (JSDoc/TypeDoc) - the live v14 docs
+at `https://foundryvtt.com/api/` (currently 14.365), plus archived v13 snapshots via
+`web.archive.org` for anything version-specific (see
+`documentation/foundry-module-migration-reference.md` for how to use this). Went back
+through every "unverified" assumption from chunk 1 and checked it against real class/
+method docs instead of the plan's prose or training-data recall alone.
+
+**Confirmed correct as implemented:**
+- `renderActorDirectory` / `renderCompendiumDirectory` hooks: both `ActorDirectory` and
+  `CompendiumDirectory` are real classes (the latter isn't linked from the docs index for
+  some reason, but its page exists), and `BASE_APPLICATION`'s documented behaviour
+  ("Hook events for super-classes further upstream of the BASE_APPLICATION are not
+  dispatched") confirms every class in the chain up to `BASE_APPLICATION` gets its own
+  `render${ClassName}` hook fired - this is the actual mechanism behind the legacy-style
+  hook, not something invented for v1 compat shims only.
+- `ui.sidebar.changeTab("compendium", "primary")`: `Sidebar#tabGroups` is typed as
+  `{primary: string}`, confirming `"primary"` is the real tab group name.
+- `foundry.applications.ux.TextEditor.implementation.enrichHTML(content, options)`:
+  confirmed signature; `EnrichmentOptions` has `secrets` and `relativeTo` fields and **no
+  `async` field at all** (fully removed, not just ignored), confirming that option should
+  be dropped rather than kept.
+- `foundry.applications.handlebars.renderTemplate(path, data)` /
+  `loadTemplates(paths)`: both exist at exactly that namespaced path with the exact
+  signatures used everywhere in this codebase.
+- `foundry.documents.collections.Actors/Items.registerSheet(...)`: the docs' own example
+  (`foundry.documents.collections.Actors.registerSheet("dnd5e", ActorSheet5eCharacter,
+  {types: [...], makeDefault: true})`) matches our call shape exactly.
+- `foundry.canvas.placeables.Token` / `foundry.documents.TokenDocument`: both exist at
+  those exact paths.
+- `canvas.tokens.active`: `PlaceablesLayer#active` ("Is this layer currently active") is
+  a real getter inherited by `TokenLayer`.
+- `token.bounds.contains(x, y)`: `Token#bounds` returns a `Rectangle`, which has
+  `contains`.
+- Using `t.visible` (not `t.isVisible`) in `token.js`'s `getTokenAtPosition`: `Token` also
+  has a documented `isVisible` getter ("visible to the calling user" - a vision/fog-of-war
+  check), which is a *different* property from the plain `visible` flag PIXI's rendering
+  pipeline toggles for level/elevation occlusion. The plan's §0.3 explicitly said
+  `token.visible`, not `isVisible` - confirmed that was the deliberate, correct choice.
+- `table.roll({roll: new Roll(...)})`: the docs literally include this as a worked
+  example ("Example: Draw results using a custom roll formula"), word-for-word matching
+  the fix in `roll-table.js`. `RollTableDraw` is confirmed to be `{results:
+  TableResult[], roll: Roll}`, matching `roll.results[0]` / `roll.roll` usage.
+- `TableResult`'s schema is confirmed to be `name` (`StringField`), `documentUuid`
+  (`DocumentUUIDField`), `type` (`DocumentTypeField`) - **no** `text`, `documentCollection`,
+  or `documentId` fields exist at all in the current schema, confirming the `roll-table.js`
+  fix and ruling out any fallback path for the old field names.
+
+**Real bug found and fixed:** the plan's §0.3 claim that `ChatMessage.applyRollMode` is
+"shimmed on v14 until V16 but warns" is **wrong** for 14.365 - it doesn't exist at all
+(no static or instance method by that name anywhere in the v14 docs). This didn't break
+anything because `compat.js`'s `applyMessageMode` feature-detects on `ChatMessage.applyMode`
+existing rather than branching on version, so it never reaches the `applyRollMode` call on
+v14 - but the v14 branch itself had a latent bug: it called
+`game.settings.get("core", "messageMode")`, a setting key that appears nowhere in the
+v14 docs. `ChatMessage.applyMode`'s own docs say its `mode` parameter is optional and
+"otherwise appl[ies] the default mode stored in client settings" when omitted - so the fix
+was to stop guessing the setting key entirely and call `ChatMessage.applyMode(messageData)`
+with one argument, letting core resolve the default itself. Without this fix, every chat
+message created on v14 risked throwing "sceneModes is not a registered game setting" (or
+similar) if that guessed key didn't exist - it doesn't appear to.
+
+**Still not fully nailable down from docs alone (needs a live client):**
+- The exact sidebar row markup (`li.directory-item.entry.actor` / `dataset.entryId` in
+  `grid-hover.js`). JSDoc/TypeDoc only documents JS classes/methods, not compiled
+  Handlebars template output, so the literal CSS class list and attribute name can't be
+  confirmed this way. What *is* now confirmed: `DocumentDirectory`'s entire method surface
+  uses "entry" terminology pervasively (`_getEntryDragData(entryId)`,
+  `_onMatchSearchEntry(query, entryIds, element)`, etc.) - not "document" - which strongly
+  corroborates `dataset.entryId` over the old `dataset.documentId`, but the precise class
+  chain is still a required manual test-matrix item (§12).
+- The exact hook-argument shape for `renderChatMessageHTML` (i.e. that `html` is an
+  `HTMLElement`, not jQuery) wasn't pinned down via an explicit `@fires`-tagged doc block
+  in this reference (TypeDoc's "Fires" sections present in the docs didn't resolve to a
+  readable event name via the extraction method used here). This is still well-corroborated
+  by Foundry's own published v12 migration notes (independent of this plan), so left
+  as-is, but flagged as the one item in this pass not confirmed by the API docs
+  themselves.
+
+See `documentation/foundry-module-migration-reference.md` for the reusable how-to (doc
+site access, tooling gotchas) distilled out of this session for future migration work.
