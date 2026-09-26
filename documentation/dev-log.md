@@ -1272,3 +1272,42 @@ document-sheet base class - this bug is isolated to the two document-sheet class
 `.mjs` syntax check. Please re-test - opening an actor sheet is one of the most
 fundamental interactions in the whole system, so this was worth fixing immediately and
 re-confirming rather than waiting to batch it with other findings.
+
+## Third live-Foundry test result: sheet opens; a real, pre-existing bug attacking
+
+Confirms the previous two fixes worked - the actor sheet now opens. Attacking (a "Bash"
+basic action triggered via the Token Action HUD) then threw `TypeError: can't access
+property "system", actorGrid is undefined` from `RollHandler#basicAction`
+(`roll-handler.js:175`).
+
+**Root cause: pre-existing, not migration-related** (this method wasn't touched by any
+migration chunk). Both the `"bash"` and `"threatDisplay"` cases look up
+`rollParams.actor.items.get(rollParams.actor.system.gridType)` and immediately
+dereference `.system.bashDamage`/`.system.threatDisplayMarbles` with no null check.
+`system.gridType` (`base-actor-schema.js`) is a plain `StringField` that's blank by
+default, and `items.get("")` returns `undefined` - so any actor whose grid type hasn't
+been assigned yet (very plausibly the case for whatever test actor was used) crashes the
+instant a "Bash" or "Threat Display" action resolves as a hit.
+
+Found the same lookup already handled *correctly* elsewhere in this same codebase -
+`AttackHandler.rollHitLocation` (`attack.js:141`) guards it with
+`if (!hitZoneInfo) { game.tagHandler.createChatMessage(defender.name + " has no grid type
+assigned!", defender); return false; }`. Didn't copy that exact pattern here, since that
+call gates an entire hit-location roll (nothing useful can happen without it), whereas
+`bash`/`threatDisplay`'s grid lookup only supplies a *supplementary* damage/marbles number
+appended to an otherwise-complete roll result - silently omitting that one line (guarding
+with `if (actorGrid) {...}`) is proportionate and doesn't hide anything the player
+actually needs to see.
+
+**Checked for the same unguarded pattern elsewhere** (`grep` for
+`items.get(...gridType...)`): two more call sites exist
+(`gearwright-actor.js:393`'s `getRegionIndexFromKey`, `grid-base.js:19`'s
+`constructGrid`), both left alone - the former only runs during Gearwright import
+processing (which itself assigns `gridType` as part of the same import), and the latter
+is only reachable once the `interactiveGrid` flag is set (which itself implies a grid was
+already assigned) - neither is a plausible way for an unset `gridType` to reach these
+particular lines the way it reached `basicAction` via a plain HUD button click.
+`items-manager.js:169`/`actor.js:87` already guard their own `gridType` reads correctly.
+
+**Verification:** `npm run lint` clean, `npx prettier --check` clean, `.mjs` syntax check
+clean. Please re-test.

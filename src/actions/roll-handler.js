@@ -168,15 +168,17 @@ export class RollHandler {
 					const actorGrid = await rollParams.actor.items.get(
 						rollParams.actor.system.gridType
 					);
-					const damageText = await renderTemplate(
-						"systems/fathomlessgears/templates/partials/damage-partial.html",
-						{
-							text: game.i18n.localize("INTERNALS.damage"),
-							damageVal: actorGrid.system.bashDamage,
-							damageType: "damage"
-						}
-					);
-					rollText = rollText.concat(damageText);
+					if (actorGrid) {
+						const damageText = await renderTemplate(
+							"systems/fathomlessgears/templates/partials/damage-partial.html",
+							{
+								text: game.i18n.localize("INTERNALS.damage"),
+								damageVal: actorGrid.system.bashDamage,
+								damageType: "damage"
+							}
+						);
+						rollText = rollText.concat(damageText);
+					}
 				}
 				break;
 			}
@@ -187,15 +189,18 @@ export class RollHandler {
 					const actorGrid = await rollParams.actor.items.get(
 						rollParams.actor.system.gridType
 					);
-					const damageText = await renderTemplate(
-						"systems/fathomlessgears/templates/partials/damage-partial.html",
-						{
-							text: game.i18n.localize("INTERNALS.marbles"),
-							damageVal: actorGrid.system.threatDisplayMarbles,
-							damageType: "marbles"
-						}
-					);
-					rollText = rollText.concat(damageText);
+					if (actorGrid) {
+						const damageText = await renderTemplate(
+							"systems/fathomlessgears/templates/partials/damage-partial.html",
+							{
+								text: game.i18n.localize("INTERNALS.marbles"),
+								damageVal:
+									actorGrid.system.threatDisplayMarbles,
+								damageType: "marbles"
+							}
+						);
+						rollText = rollText.concat(damageText);
+					}
 				}
 				break;
 			}
