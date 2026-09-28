@@ -2,7 +2,7 @@
 	"id": "fathomlessgears",
 	"version": "#{VERSION}#",
 	"title": "Fathomless Gears",
-	"description": "A Foundry VTT system for Fathomless Gears, the mech fishing game origionally by Ralf Ziegler",
+	"description": "A Foundry VTT system for Fathomless Gears, the mech fishing game by Ralf Ziegler",
 	"authors": [
 		{
 			"name": "Natasha Pegler",
