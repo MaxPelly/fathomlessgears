@@ -2,11 +2,15 @@
 	"id": "fathomlessgears",
 	"version": "#{VERSION}#",
 	"title": "Fathomless Gears",
-	"description": "A Foundry VTT system for Fathomless Gears, the mech fishing game by Ralf Ziegler",
+	"description": "A Foundry VTT system for Fathomless Gears, the mech fishing game origionally by Ralf Ziegler",
 	"authors": [
 		{
 			"name": "Natasha Pegler",
 			"url": "https://github.com/twelfthrootoftwo"
+		},
+		{
+			"name": "Max Pelly",
+			"url": "https://github.com/MaxPelly"			
 		}
 	],
 	"esmodules": ["src/fathomlessgears.js", "scripts/jszip.js"],
@@ -151,8 +155,8 @@
 				"type": "module",
 				"manifest": "https://github.com/MaxPelly/fvtt-token-action-hud-FG/releases/latest/download/module.json",
 				"compatibility": {
-					"minimum": "1.0.0-alpha1",
-					"verified": "1.0.0-alpha1"
+					"minimum": "2.0.0-alpha1",
+					"verified": "2.0.0-alpha1"
 				}
 			},
 			{
